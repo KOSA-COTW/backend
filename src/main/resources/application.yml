@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: ${DB_ID}
+    password: ${DB_PW}
+
+  jpa:
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+        default_schema: cotw
+    hibernate:
+      ddl-auto: create
+
+logging:
+  level:
+    org:
+      hibernate:
+        sql: debug
+        type: trace
