@@ -26,5 +26,6 @@ public class Comment extends BaseEntity {
     @JoinColumn(name = "post_id")
     private Post post;
 
+    @Column(nullable = false)
     private String content;
 }
