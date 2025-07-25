@@ -8,6 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @Builder
 @Getter
+@Setter
 public class Member {
 
     @Id

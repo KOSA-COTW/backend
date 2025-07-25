@@ -29,13 +29,13 @@ public class MemberController {
         return responseEntity;
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<Member> login(@RequestBody LoginRequestDTO loginRequestDTO){
-        Member member = memberService.loginMember(loginRequestDTO);
-        // 이메일, 비밀번호 일치 시 jwt token 발행
-
-
-        return new ResponseEntity<>(member, HttpStatus.OK);
-    }
+//    @PostMapping("/login")
+//    public ResponseEntity<Member> login(@RequestBody LoginRequestDTO loginRequestDTO){
+//        Member member = memberService.loginMember(loginRequestDTO);
+//        // 이메일, 비밀번호 일치 시 jwt token 발행
+//
+//
+//        return new ResponseEntity<>(member, HttpStatus.OK);
+//    }
 
 }
