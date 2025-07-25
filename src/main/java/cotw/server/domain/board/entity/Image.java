@@ -1,4 +1,4 @@
-package cotw.server.domain.board.domain;
+package cotw.server.domain.board.entity;
 
 import cotw.server.common.BaseEntity;
 import jakarta.persistence.*;
@@ -28,6 +28,10 @@ public class Image extends BaseEntity {
 
     // 어떤 게시글(Post)에 속한 이미지인지
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id")
+    @JoinColumn(name = "post_id", nullable = false)
     private Post post;
+
+    public void setPost(Post post) {
+        this.post = post;
+    }
 }
