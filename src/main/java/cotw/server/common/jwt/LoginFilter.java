@@ -35,15 +35,22 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     public Authentication attemptAuthentication(
             HttpServletRequest request,
             HttpServletResponse response
-    ) throws AuthenticationException {
-        String username = obtainUsername(request);
-        String password = obtainPassword(request);
+    ) throws AuthenticationException {      // json 타입을 파싱하여 사용.
+        if (request.getContentType().equals("application/json")) {
+            try {
+                Map<String, String> credentials = new ObjectMapper().readValue(request.getInputStream(), new TypeReference<>() {});
+                String email = credentials.get("email");
+                String password = credentials.get("password");
 
-        System.out.println(username);
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(email, password);
 
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(username, password, null);
-
-        return authenticationManager.authenticate(authToken);
+                return authenticationManager.authenticate(authToken);
+            } catch (IOException e) {
+                throw new AuthenticationServiceException("Request parsing failed", e);
+            }
+        }
+        return super.attemptAuthentication(request, response);
     }
 
     @Override

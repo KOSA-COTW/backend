@@ -3,6 +3,8 @@ package cotw.server.domain.member.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
@@ -27,5 +29,7 @@ public class Member {
     @Column(nullable = false)
     @Builder.Default
     private Role role = Role.USER;
+
+    private LocalDateTime createdDate;
 
 }
