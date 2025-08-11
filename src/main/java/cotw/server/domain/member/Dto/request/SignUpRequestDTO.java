@@ -5,6 +5,8 @@ import cotw.server.domain.member.entity.Role;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
+import java.time.LocalDateTime;
+
 public record SignUpRequestDTO(
         String name,
 
@@ -13,18 +15,20 @@ public record SignUpRequestDTO(
         String email,
 
         @NotNull(message = "password는 필수 값 입니다")
-        String password,
-        @Pattern(regexp = "^[0-9]{6}-[0-9]{7}$", message = "주민등록번호 형식이 유효하지 않습니다.")
-        @NotNull(message = "주민등록번호는 필수 값 입니다.")
-        String residentRegistrationNumber) {
+        String password
+//        @Pattern(regexp = "^[0-9]{6}-[0-9]{7}$", message = "주민등록번호 형식이 유효하지 않습니다.")
+//        @NotNull(message = "주민등록번호는 필수 값 입니다.")
+//        String residentRegistrationNumber
+) {
 
     public Member toEntity(String email, String password, Role role) {
         return Member.builder()
                 .name(name)
                 .email(email)
                 .password(password)
-                .residentRegistrationNumber(residentRegistrationNumber)
+//                .residentRegistrationNumber(residentRegistrationNumber)
                 .role(role)
+                .createdDate(LocalDateTime.now())
                 .build();
     }
 }
