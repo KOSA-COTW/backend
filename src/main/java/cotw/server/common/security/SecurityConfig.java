@@ -16,6 +16,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
@@ -54,7 +57,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http,
+                                           OAuth2UserService<OAuth2UserRequest, OAuth2User> customOAuth2UserService) throws Exception {
 
         http.cors(cors -> cors.configurationSource(request -> {
             CorsConfiguration config = new CorsConfiguration();
@@ -65,8 +69,6 @@ public class SecurityConfig {
             config.setMaxAge(3600L);
             return config;
         }));
-
-
 
         //csrf disable
         http
@@ -83,11 +85,18 @@ public class SecurityConfig {
 
         http
                 .authorizeHttpRequests((auth) -> auth
+                        .requestMatchers("/oauth2/authorize").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/login", "/", "/member/signup").permitAll()
                         .requestMatchers("/reissue").permitAll()
 //                        .requestMatchers("/admin").hasRole("ADMIN")
                         .anyRequest().authenticated());
+
+        http
+                .oauth2Login(oauth -> oauth
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService))
+                        .defaultSuccessUrl("/", true));
 
         http
                 .addFilterBefore(new JwtFilter(jwtUtil), LoginFilter.class)
