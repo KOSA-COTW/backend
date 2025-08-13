@@ -14,10 +14,6 @@ import java.util.List;
 @NoArgsConstructor
 public class PostCreateRequestDto {
 
-    // [임시 필드] 로그인 기능이 없어 사용자 식별을 위해 memberId를 직접 받음.
-    // 추후 인증 기능 연동 시 제거 예정
-    private Long memberId;
-
     private String title;
 
     private String content;
@@ -39,6 +35,7 @@ public class PostCreateRequestDto {
                 .amount(amount)
                 .currentAmount(0)
                 .author(author)
+                .isPublic(false)
                 .build();
     }
 

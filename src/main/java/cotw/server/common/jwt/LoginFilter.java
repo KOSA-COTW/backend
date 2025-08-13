@@ -68,9 +68,13 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         GrantedAuthority auth = iterator.next();
         String role = auth.getAuthority();
 
+        // ex) "ROLE_USER" -> "USER" 로 변환해서 토큰에 담기
+        String roleFromAuth = authentication.getAuthorities().iterator().next().getAuthority();
+        String roleForToken = roleFromAuth.replaceFirst("^ROLE_", "");
+
         //토큰 생성
-        String access = jwtUtil.createToken("access", username, role, 600000L);
-        String refresh = jwtUtil.createToken("refresh", username, role, 86400000L);
+        String access = jwtUtil.createToken("access", username, roleForToken, 3600000L);
+        String refresh = jwtUtil.createToken("refresh", username, roleForToken, 86400000L);
 
         // refresh token save
         addRefreshToken(username, refresh, 1000*60*60*24L);

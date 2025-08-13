@@ -47,6 +47,10 @@ public class Post extends BaseEntity {
     @Column(nullable = false)
     private int currentAmount;
 
+    // 공개 여부
+    @Column(nullable = false)
+    private boolean isPublic;
+
     // 이미지 리스트
     @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -72,5 +76,10 @@ public class Post extends BaseEntity {
         if (dto.getContent() != null) this.content = dto.getContent();
         if (dto.getCategory() != null) this.category = dto.getCategory();
         if (dto.getAmount() > 0) this.amount = dto.getAmount();
+    }
+
+    // 공개 여부 변경
+    public void changeVisibility(boolean isPublic) {
+        this.isPublic = isPublic;
     }
 }
