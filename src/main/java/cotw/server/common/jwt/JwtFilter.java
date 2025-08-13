@@ -10,11 +10,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.List;
 
 
 @RequiredArgsConstructor
@@ -68,13 +70,20 @@ public class JwtFilter extends OncePerRequestFilter {
         // username, role 값을 획득
         String username = jwtUtil.getUsername(accessToken);
         String role = jwtUtil.getRole(accessToken);
+        String roleFromToken = jwtUtil.getRole(accessToken); // ex) "USER"
+        String roleWithPrefix = roleFromToken.startsWith("ROLE_") ? roleFromToken : "ROLE_" + roleFromToken; // ex) "ROLE_USER"
 
+        // enum 매칭은 접두어 없는 값 사용
         Member member = new Member();
         member.setEmail(username);
-        member.setRole(Role.valueOf(role));
+        member.setRole(Role.valueOf(roleFromToken));
         CustomUserDetails customUserDetails = new CustomUserDetails(member);
 
-        Authentication authToken = new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities());
+        // 권한 목록 생성 (Spring Security 권한 규칙에 맞춰 접두어 포함)
+        List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(roleWithPrefix));
+
+        // Authentication 객체 생성 및 컨텍스트에 저장
+        Authentication authToken = new UsernamePasswordAuthenticationToken(customUserDetails, null, authorities);
         SecurityContextHolder.getContext().setAuthentication(authToken);
 
         filterChain.doFilter(request, response);

@@ -1,0 +1,85 @@
+package cotw.server.domain.board.entity;
+
+import cotw.server.common.BaseEntity;
+import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
+import cotw.server.domain.member.entity.Member;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Post extends BaseEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String title;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    // 글 작성자 (단체 계정)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", nullable = false)
+    private Member author;
+
+    // 카테고리
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Category category;
+
+    // 총 목표 금액
+    @Column(nullable = false)
+    private int amount;
+
+    // 현재까지 모금된 금액
+    @Column(nullable = false)
+    private int currentAmount;
+
+    // 공개 여부
+    @Column(nullable = false)
+    private boolean isPublic;
+
+    // 이미지 리스트
+    @Builder.Default
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Image> images = new ArrayList<>();
+
+    // 기부한 사용자 목록
+    @Builder.Default
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Participant> participants  = new ArrayList<>();
+
+    // 댓글 목록
+    @Builder.Default
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> comments = new ArrayList<>();
+
+    public void addImage(Image image) {
+        this.images.add(image);
+        image.setPost(this);
+    }
+
+    public void update(PostUpdateRequestDto dto) {
+        if (dto.getTitle() != null) this.title = dto.getTitle();
+        if (dto.getContent() != null) this.content = dto.getContent();
+        if (dto.getCategory() != null) this.category = dto.getCategory();
+        if (dto.getAmount() > 0) this.amount = dto.getAmount();
+    }
+
+    // 공개 여부 변경
+    public void changeVisibility(boolean isPublic) {
+        this.isPublic = isPublic;
+    }
+}
