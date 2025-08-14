@@ -3,7 +3,6 @@ package cotw.server.common.auth;
 import cotw.server.common.auth.DTO.GoogleUserInfo;
 import cotw.server.common.auth.DTO.KakaoUserInfo;
 import cotw.server.common.auth.DTO.NaverUserInfo;
-import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.repository.MemberRepository;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -45,11 +44,11 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         };
 
         // 2) DB upsert
-        Member member = memberRepository.findByProviderAndProviderId((registrationId, info.id())
-                .map(u -> u.update(info.name(), info.email(), info.picture()))
-                .orElseGet(() -> memberRepository.save(
-                        Member.ofSocial(registrationId, info.id(), info.name(), info.email(), info.picture())
-                ));
+//        Member member = memberRepository.findByProviderAndProviderId((registrationId), info.id())
+//                .map(u -> u.update(info.name(), info.email(), info.picture()))
+//                .orElseGet(() -> memberRepository.save(
+//                        Member.ofSocial(registrationId, info.id(), info.name(), info.email(), info.picture())
+//                ));
 
         // 3) 권한 및 Principal 반환
         Collection<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("USER"));

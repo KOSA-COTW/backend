@@ -23,8 +23,6 @@ public class Member {
     private String email;
     private String password;
 
-    private String residentRegistrationNumber;  // 주민등록번호. 기부금 영수증 발행시 필요해서 넣었음
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
