@@ -3,6 +3,7 @@ package cotw.server.domain.board.controller;
 import cotw.server.common.jwt.CustomUserDetails;
 import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
+import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
 import cotw.server.domain.board.service.PostService;
 import lombok.RequiredArgsConstructor;
@@ -89,5 +90,16 @@ public class PostController {
             @RequestParam boolean isPublic) {
         postService.changePostVisibility(postId, isPublic, principal.getUsername());
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 공개된 모든 게시글 목록 조회
+     * - 로그인 여부와 관계없이 접근 가능
+     * - 비공개 게시글은 제외하고, isPublic = true 인 게시글만 반환
+     */
+    @GetMapping
+    public ResponseEntity<List<PostListResponseDto>> getAllPublicPosts() {
+        List<PostListResponseDto> posts = postService.getAllPublicPosts();
+        return ResponseEntity.ok(posts);
     }
 }

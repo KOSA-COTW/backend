@@ -2,6 +2,7 @@ package cotw.server.domain.board.service;
 
 import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
+import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
 import cotw.server.domain.board.entity.Image;
 import cotw.server.domain.board.entity.Post;
@@ -153,4 +154,17 @@ public class PostService {
         post.changeVisibility(isPublic);
     }
 
+    /**
+     * 공개 상태의 모든 게시글 조회
+     * - isPublic = true 조건에 해당하는 게시글만 DB에서 조회
+     */
+    @Transactional(readOnly = true)
+    public List<PostListResponseDto> getAllPublicPosts() {
+        // 공개 글만 조회
+        List<Post> posts = postRepository.findAllByIsPublicTrue();
+
+        return posts.stream()
+                .map(PostListResponseDto::new)
+                .toList();
+    }
 }
