@@ -21,6 +21,10 @@ import cotw.server.domain.payment.entity.PaymentType;
 import cotw.server.domain.payment.exception.PaymentException;
 import cotw.server.domain.payment.repository.PaymentOrderRepository;
 import cotw.server.domain.payment.repository.PaymentRepository;
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -30,6 +34,7 @@ import org.springframework.web.client.RestClient;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -86,8 +91,13 @@ public class PaymentService {
             throw new PaymentException("결제 금액이 일치하지 않습니다.");
         }
 
-        // 3. 토스 결제 승인 API 호출
-        TossPaymentResponse tossResponse = callTossConfirmApi(request);
+        // 3. 토스 결제 승인 API 호출 (비동기)
+        TossPaymentResponse tossResponse;
+        try {
+            tossResponse = callTossConfirmApiAsync(request).get();
+        } catch (Exception e) {
+            throw new PaymentException("결제 승인 처리 중 오류가 발생했습니다: " + e.getMessage());
+        }
 
         // 4. PaymentOrder 생성
         Member member = memberRepository.findById(paymentEvent.getMemberId())
@@ -141,6 +151,14 @@ public class PaymentService {
                 .toList();
     }
 
+    @CircuitBreaker(name = "paymentService", fallbackMethod = "fallbackTossConfirmApi")
+    @Retry(name = "paymentService")
+    @Bulkhead(name = "paymentService")
+    @TimeLimiter(name = "paymentService")
+    public CompletableFuture<TossPaymentResponse> callTossConfirmApiAsync(PaymentConfirmRequest request) {
+        return CompletableFuture.supplyAsync(() -> callTossConfirmApi(request));
+    }
+
     private TossPaymentResponse callTossConfirmApi(PaymentConfirmRequest request) {
         String encodedSecretKey = Base64.getEncoder()
                 .encodeToString((tossConfig.getSecretKey() + ":").getBytes());
@@ -156,6 +174,10 @@ public class PaymentService {
         } catch (Exception e) {
             throw new PaymentException("토스 결제 승인 API 호출 실패: " + e.getMessage());
         }
+    }
+
+    public TossPaymentResponse fallbackTossConfirmApi(PaymentConfirmRequest request, Exception ex) {
+        throw new PaymentException("결제 서비스가 일시적으로 불가능합니다. 잠시 후 다시 시도해주세요.");
     }
 
     private String convertToJson(Object obj) {
