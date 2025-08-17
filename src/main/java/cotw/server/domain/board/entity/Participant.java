@@ -1,4 +1,4 @@
-package cotw.server.domain.board.domain;
+package cotw.server.domain.board.entity;
 
 import cotw.server.common.BaseEntity;
 import cotw.server.domain.member.entity.Member;
@@ -19,10 +19,15 @@ public class Participant extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
+    private int amount;
+
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id", nullable = false)
     private Post post;
 
 }
