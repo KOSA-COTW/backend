@@ -1,6 +1,7 @@
 package cotw.server.domain.board.domain;
 
 import cotw.server.common.BaseEntity;
+import cotw.server.domain.member.entity.Member;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
