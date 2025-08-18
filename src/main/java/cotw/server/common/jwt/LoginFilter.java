@@ -87,16 +87,12 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
                 .orElse("ROLE_USER");
 
         // ✅ 토큰에 저장할 role은 접두사 제거해서 "ADMIN"/"USER" 형태로 표준화
-        String roleForToken = authority.startsWith("ROLE_")
-                ? authority.substring(5)
-                : authority;
+
         // ex) "ROLE_USER" -> "USER" 로 변환해서 토큰에 담기
         String roleFromAuth = authentication.getAuthorities().iterator().next().getAuthority();
         String roleForToken = roleFromAuth.replaceFirst("^ROLE_", "");
 
-        //토큰 생성
-        String access = jwtUtil.createToken("access", username, roleForToken, 3600000L);
-        String refresh = jwtUtil.createToken("refresh", username, roleForToken, 86400000L);
+
 
         // 토큰 생성 (ms)
         String access  = jwtUtil.createToken("access",  username, roleForToken, 600_000L);     // 10분

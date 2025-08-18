@@ -1,10 +1,10 @@
 package cotw.server.domain.comment.repository;
 
-import cotw.server.domain.comment.entity.Comment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
+import cotw.server.domain.board.entity.Comment;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 

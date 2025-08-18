@@ -1,8 +1,8 @@
 package cotw.server.domain.comment.service;
 
+import cotw.server.domain.board.entity.Comment;
 import cotw.server.domain.comment.dto.request.LikeRequest;
 import cotw.server.domain.comment.dto.response.LikeResponse;
-import cotw.server.domain.comment.entity.Comment;
 import cotw.server.domain.comment.entity.CommentLike;
 import cotw.server.domain.comment.repository.CommentLikeRepository;
 import cotw.server.domain.comment.repository.CommentRepository;

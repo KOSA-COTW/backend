@@ -3,7 +3,7 @@ package cotw.server.domain.comment.entity;
 import cotw.server.domain.member.entity.Member;
 import jakarta.persistence.*;
 import lombok.*;
-
+import cotw.server.domain.board.entity.Comment;
 import java.time.LocalDateTime;
 
 import static jakarta.persistence.GenerationType.IDENTITY;

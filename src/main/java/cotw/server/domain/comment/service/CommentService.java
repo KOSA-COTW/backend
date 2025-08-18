@@ -1,10 +1,9 @@
 package cotw.server.domain.comment.service;
 
-import cotw.server.domain.board.domain.Post;
+import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.comment.dto.request.CreateCommentRequest;
 import cotw.server.domain.comment.dto.request.UpdateCommentRequest;
 import cotw.server.domain.comment.dto.response.CommentResponse;
-import cotw.server.domain.comment.entity.Comment;
 
 import cotw.server.domain.comment.repository.CommentRepository;
 import cotw.server.domain.member.entity.Member;
@@ -16,7 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import cotw.server.domain.board.entity.Comment;
 import java.time.LocalDateTime;
 import java.util.Objects;
 

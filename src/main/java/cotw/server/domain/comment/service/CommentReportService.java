@@ -2,7 +2,6 @@ package cotw.server.domain.comment.service;
 
 import cotw.server.domain.comment.dto.request.ReportRequest;
 import cotw.server.domain.comment.dto.response.ReportResponse;
-import cotw.server.domain.comment.entity.Comment;
 import cotw.server.domain.comment.entity.CommentReport;
 import cotw.server.domain.comment.repository.CommentReportRepository;
 import cotw.server.domain.comment.repository.CommentRepository;
@@ -12,7 +11,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import cotw.server.domain.board.entity.Comment;
 import java.time.LocalDateTime;
 
 @Service
