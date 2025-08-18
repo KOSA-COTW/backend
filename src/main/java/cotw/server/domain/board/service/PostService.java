@@ -2,6 +2,7 @@ package cotw.server.domain.board.service;
 
 import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
+import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
 import cotw.server.domain.board.entity.Image;
 import cotw.server.domain.board.entity.Post;
@@ -14,6 +15,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -25,8 +27,9 @@ public class PostService {
 
     /**
      * 게시글 생성
-     * - 로그인한 사용자만 가능
-     * - 기본적으로 isPublic = false로 저장 (Post 엔티티에서 기본값 설정)
+     * - 기본 비공개(isPublic=false)
+     * - 마감일은 오늘 이후
+     * - 첫 번째 이미지 썸네일 지정
      */
     @Transactional
     public Long createPost(PostCreateRequestDto dto, String authorEmail) {
@@ -35,10 +38,13 @@ public class PostService {
         Member author = memberRepository.findByEmail(authorEmail)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
-        // Post 엔티티 생성
-        Post post = dto.toPostEntity(author);
+        // 마감일 검증: 오늘 이후
+        if (!dto.getDeadline().isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("기부 마감일은 오늘 이후여야 합니다.");
+        }
 
-        // 이미지 엔티티 리스트 생성 & Post와 연관관계 설정
+        // 엔티티 생성 및 이미지 바인딩
+        Post post = dto.toPostEntity(author);
         List<Image> images = dto.toImageEntityList(post);
         images.forEach(post::addImage);
 
@@ -153,4 +159,17 @@ public class PostService {
         post.changeVisibility(isPublic);
     }
 
+    /**
+     * 공개 상태의 모든 게시글 조회
+     * - isPublic = true 조건에 해당하는 게시글만 DB에서 조회
+     */
+    @Transactional(readOnly = true)
+    public List<PostListResponseDto> getAllPublicPosts() {
+        // 공개 글만 조회
+        List<Post> posts = postRepository.findAllByIsPublicTrue();
+
+        return posts.stream()
+                .map(PostListResponseDto::new)
+                .toList();
+    }
 }
