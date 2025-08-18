@@ -6,8 +6,10 @@ import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
 import cotw.server.domain.board.service.PostService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,8 +27,10 @@ public class PostController {
      * - 로그인한 사용자만 가능
      * - 작성 시 기본 isPublic = false (비공개)
      */
+    @PreAuthorize("hasAnyRole('ADMIN','ORGANIZATION')")
     @PostMapping
-    public ResponseEntity<?> createPost(@AuthenticationPrincipal CustomUserDetails principal, @RequestBody PostCreateRequestDto dto) {
+    public ResponseEntity<?> createPost(@AuthenticationPrincipal CustomUserDetails principal,
+                                        @Valid @RequestBody PostCreateRequestDto dto) {
         Long postId = postService.createPost(dto, principal.getUsername());
         return ResponseEntity.ok(postId);
     }
@@ -83,6 +87,7 @@ public class PostController {
      * - 관리자만 가능
      * - 작성 시 기본 false → 관리자가 true로 변경하면 공개됨
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{postId}/visibility")
     public ResponseEntity<Void> changePostVisibility(
             @AuthenticationPrincipal CustomUserDetails principal,
