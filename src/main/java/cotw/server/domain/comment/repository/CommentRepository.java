@@ -8,31 +8,73 @@ import cotw.server.domain.board.entity.Comment;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 
-    // 최신순: 일반유저는 공개+미삭제만, 작성자/관리자는 분기
-    @Query("""
-       select c from Comment c
-       where c.post.id = :postId
-         and ( 
+    @Query(
+            value = """
+        select c
+        from Comment c
+        where c.post.id = :postId
+          and (
                 :admin = true
-                 or (c.deletedAt is null and (c.isPublic = true or c.member.id = : viewerId))
-             )
-                 order by c.createdAt desc, c.id desc
-    """)
+             or (
+                   c.deletedAt is null
+               and ( c.isPublic = true
+                     or ( :viewerId is not null and c.member.id = :viewerId )
+                   )
+                )
+          )
+        order by c.createdAt desc, c.id desc
+      """,
+            countQuery = """
+        select count(c)
+        from Comment c
+        where c.post.id = :postId
+          and (
+                :admin = true
+             or (
+                   c.deletedAt is null
+               and ( c.isPublic = true
+                     or ( :viewerId is not null and c.member.id = :viewerId )
+                   )
+                )
+          )
+      """
+    )
     Page<Comment> findLatestVisible(@Param("postId") Long postId,
                                     @Param("viewerId") Long viewerId,
                                     @Param("admin") boolean admin,
                                     Pageable pageable);
 
-    // 좋아요순
-    @Query("""
-       select c from Comment c
-       where c.post.id = :postId
-         and ( 
-             :admin = true
-                 or (c.deletedAt is null and (c.isPublic = true or c.member.id = :viewerId))
-            )
-       order by c.likeCount desc, c.id desc
-    """)
+    @Query(
+            value = """
+        select c
+        from Comment c
+        where c.post.id = :postId
+          and (
+                :admin = true
+             or (
+                   c.deletedAt is null
+               and ( c.isPublic = true
+                     or ( :viewerId is not null and c.member.id = :viewerId )
+                   )
+                )
+          )
+        order by c.likeCount desc, c.id desc
+      """,
+            countQuery = """
+        select count(c)
+        from Comment c
+        where c.post.id = :postId
+          and (
+                :admin = true
+             or (
+                   c.deletedAt is null
+               and ( c.isPublic = true
+                     or ( :viewerId is not null and c.member.id = :viewerId )
+                   )
+                )
+          )
+      """
+    )
     Page<Comment> findLikeVisible(@Param("postId") Long postId,
                                   @Param("viewerId") Long viewerId,
                                   @Param("admin") boolean admin,
