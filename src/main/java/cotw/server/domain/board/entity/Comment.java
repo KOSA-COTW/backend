@@ -63,6 +63,7 @@ public class Comment extends BaseEntity {
 
     public void delete() {
         this.deletedAt = LocalDateTime.now();
+        this.isPublic = false; // 소프트 삭제 시 비공개 전환까지 일괄 처리
     }
 
     public void increaseLikeCount() {
@@ -77,8 +78,8 @@ public class Comment extends BaseEntity {
 
     public void increaseReportCount() {
         this.reportCount++;
-        // 신고 3회 시 자동 숨김
-        if (this.reportCount >= 3) {
+        // 신고 "도달 시점"에만 48h 마감 설정 (중복 설정 방지)
+        if (this.reportCount == 3) {
             this.isPublic = false;
             this.moderationDueAt = LocalDateTime.now().plusHours(48);
         }
@@ -96,4 +97,12 @@ public class Comment extends BaseEntity {
     public boolean isModerationExpired() {
         return moderationDueAt != null && LocalDateTime.now().isAfter(moderationDueAt);
     }
-}
+        /** 관리자 복원: 신고수 초기화 + 공개 + 삭제/검토 마감 초기화 */
+        public void restoreByAdmin () {
+            this.reportCount = 0;
+            this.isPublic = true;
+            this.deletedAt = null;
+            this.moderationDueAt = null;
+        }
+    }
+

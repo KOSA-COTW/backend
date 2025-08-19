@@ -27,8 +27,7 @@ public class CommentController {
             @AuthenticationPrincipal(expression = "id") Long memberId,
             @Valid @RequestBody CreateCommentRequest req
     ) {
-        var safeReq = new CreateCommentRequest(req.postId(), memberId, req.content());
-        return ResponseEntity.ok(commentService.create(safeReq));
+        return ResponseEntity.ok(commentService.create(memberId, req));
     }
 
     /** 댓글 목록: 최신/좋아요 정렬 */

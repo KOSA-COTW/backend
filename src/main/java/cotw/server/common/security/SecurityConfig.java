@@ -5,6 +5,7 @@ import cotw.server.common.jwt.JwtFilter;
 import cotw.server.common.jwt.JwtUtil;
 import cotw.server.common.jwt.LoginFilter;
 import cotw.server.common.jwt.repository.RefreshTokenRepository;
+import cotw.server.domain.member.repository.MemberRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -52,7 +53,7 @@ public class SecurityConfig {
 
     // ✅ SecurityFilterChain 설정
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, MemberRepository memberRepository) throws Exception {
 
         // CORS 설정
         http.cors(cors -> cors.configurationSource(request -> {
@@ -61,6 +62,7 @@ public class SecurityConfig {
             config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
             config.setAllowedHeaders(List.of("*"));
             config.setExposedHeaders(List.of("Authorization")); // JWT 응답 헤더 노출
+            config.setAllowCredentials(true); // ✅ refresh 쿠키 사용 시 필수
             config.setMaxAge(3600L);
             return config;
         }));
@@ -77,11 +79,12 @@ public class SecurityConfig {
                 .requestMatchers("/api/admin/**").hasRole("ADMIN") // 관리자만 접근
                 .anyRequest().authenticated()
         );
+        // ✅ LoginFilter에 URL 매핑 지정 (/auth/login)
+                LoginFilter loginFilter = new LoginFilter(authenticationManager(), jwtUtil, refreshTokenRepository);
+                loginFilter.setFilterProcessesUrl("/auth/login");
 
-        // ✅ JWT 관련 필터 추가
-        http.addFilterBefore(new JwtFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)
-                .addFilterAt(new LoginFilter(authenticationManager(), jwtUtil, refreshTokenRepository),
-                        UsernamePasswordAuthenticationFilter.class)
+                http.addFilterBefore(new JwtFilter(jwtUtil, memberRepository), UsernamePasswordAuthenticationFilter.class).addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class)
+
                 .addFilterBefore(new CustomLogoutFilter(jwtUtil, refreshTokenRepository), LogoutFilter.class);
 
         // ✅ 세션 사용 X → JWT 방식

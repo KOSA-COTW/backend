@@ -27,10 +27,10 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final EntityManager em;
 
-    // 작성
-    public CommentResponse create(CreateCommentRequest req) {
+    // 작성 (JWT의 memberId 사용)
+    public CommentResponse create(Long memberId, CreateCommentRequest req) {
         Post postRef = em.getReference(Post.class, req.postId());
-        Member memRef = em.getReference(Member.class, req.memberId());
+        Member memRef = em.getReference(Member.class, memberId);
         Comment c = commentRepository.save(Comment.builder()
                 .post(postRef).member(memRef).content(req.content())
                 .build());
@@ -50,8 +50,7 @@ public class CommentService {
     public void delete(Long commentId, Long requesterId, boolean admin) {
         Comment c = get(commentId);
         if (!admin) requireOwner(c, requesterId);
-        c.setDeletedAt(LocalDateTime.now());
-        c.setPublic(false);
+        c.delete(); // 도메인 메서드로 일관 처리
     }
 
     // 목록: 최신순
@@ -71,9 +70,7 @@ public class CommentService {
     // 관리자 복원/삭제
     public void adminRestore(Long commentId) {
         Comment c = get(commentId);
-        c.setPublic(true);
-        c.setModerationDueAt(null);
-        c.setDeletedAt(null);
+        c.restoreByAdmin(); // 신고수 0 + 공개 + 삭제/검토마감 초기화
     }
     public void adminDelete(Long commentId) {
         Comment c = get(commentId);

@@ -53,6 +53,10 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return UserDetails.super.isEnabled();
+        return true; // 계정 상태 플래그를 Member에서 관리한다면 여기에 반영
+    }
+
+    public Long getId() {
+        return member.getId();
     }
 }

@@ -2,6 +2,7 @@ package cotw.server.common.jwt;
 
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
+import cotw.server.domain.member.repository.MemberRepository;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,6 +23,7 @@ import java.util.List;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final MemberRepository memberRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -42,16 +44,14 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-        // ✅ 만료 확인
-        try {
-            jwtUtil.isExpired(accessToken);
-        } catch (ExpiredJwtException e) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            try (PrintWriter writer = response.getWriter()) {
-                writer.print("access token expired");
-            }
-            return;
-        }
+        // ✅ 만료 확인 (boolean 반환값 사용)
+                if (Boolean.TRUE.equals(jwtUtil.isExpired(accessToken))) {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        try (PrintWriter writer = response.getWriter()) {
+                                writer.print("access token expired");
+                            }
+                        return;
+                    }
 
         // ✅ category 확인
         String category = jwtUtil.getCategory(accessToken);
@@ -63,26 +63,20 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-        // ✅ username(email), role 추출
+        // ✅ username(email) 추출
         String username = jwtUtil.getUsername(accessToken);
-        String roleFromToken = jwtUtil.getRole(accessToken); // ex) "USER" or "ADMIN"
-
-        // Spring Security 권한 규칙에 맞춰 접두어 추가
-        String roleWithPrefix = roleFromToken.startsWith("ROLE_")
-                ? roleFromToken
-                : "ROLE_" + roleFromToken;
 
         // ✅ Member 생성 (Enum에는 접두어 없는 값 사용)
-        Member member = new Member();
-        member.setEmail(username);
-        member.setRole(Role.valueOf(roleFromToken.replace("ROLE_", "")));
+        // ⭐ DB에서 Member 조회 (id, email, role 모두 포함)
+        Member member = memberRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("사용자 정보 없음"));
 
         // ✅ UserDetails 생성
         CustomUserDetails customUserDetails = new CustomUserDetails(member);
 
-        // ✅ 권한 목록 생성
+        // ✅ 권한 목록은 "DB의 역할"을 신뢰 (토큰 role 미신뢰)
         List<SimpleGrantedAuthority> authorities =
-                List.of(new SimpleGrantedAuthority(roleWithPrefix));
+                List.of(new SimpleGrantedAuthority(member.getRole().getAuthority()));
 
         // ✅ Authentication 객체 생성 및 컨텍스트 저장
         Authentication authToken =
