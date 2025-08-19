@@ -1,11 +1,13 @@
 package cotw.server.common.security;
 
+import cotw.server.common.auth.CustomOAuth2UserService;
+import cotw.server.common.auth.OAuth2LoginSuccessHandler;
 import cotw.server.common.jwt.CustomLogoutFilter;
 import cotw.server.common.jwt.JwtFilter;
 import cotw.server.common.jwt.JwtUtil;
 import cotw.server.common.jwt.LoginFilter;
 import cotw.server.common.jwt.repository.RefreshTokenRepository;
-import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -16,38 +18,23 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.core.oidc.IdTokenClaimNames;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final AuthenticationConfiguration authenticationConfiguration;
     private final JwtUtil jwtUtil;
     private final RefreshTokenRepository refreshTokenRepository;
-
-    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JwtUtil jwtUtil, RefreshTokenRepository refreshTokenRepository) {
-
-        this.authenticationConfiguration = authenticationConfiguration;
-        this.jwtUtil = jwtUtil;
-        this.refreshTokenRepository = refreshTokenRepository;
-    }
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
 
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
@@ -100,7 +87,7 @@ public class SecurityConfig {
 
         http
                 .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers("/oauth2/authorize").permitAll()
+                        .requestMatchers("/oauth2/**", "/login/oauth2/code/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/login", "/", "/auth/signup").permitAll()
                         .requestMatchers("/reissue").permitAll()
@@ -115,11 +102,12 @@ public class SecurityConfig {
 //                        .requestMatchers("/admin").hasRole("ADMIN")
                         .anyRequest().authenticated());
 
-//        http
-//                .oauth2Login(oauth -> oauth
-//                        .userInfoEndpoint(userInfo -> userInfo
-//                                .userService(customOAuth2UserService))
-//                        .defaultSuccessUrl("/", true));
+        http
+                .oauth2Login(oauth -> oauth
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService))
+                        .successHandler(oauth2LoginSuccessHandler));
+
 
         http
                 .addFilterBefore(new JwtFilter(jwtUtil), LoginFilter.class)
@@ -135,27 +123,4 @@ public class SecurityConfig {
 
         return http.build();
     }
-
-//    // OAuth2 클라이언트 등록 정보 빈 생성
-//    @Bean
-//    public ClientRegistrationRepository clientRegistrationRepository() {
-//        return new InMemoryClientRegistrationRepository(
-//                googleClientRegistration()
-//                // 다른 OAuth2 제공자 등록 가능
-//        );
-//    }
-//
-//    private ClientRegistration googleClientRegistration() {
-//        return ClientRegistration.withRegistrationId("google")
-//                .clientId(System.getenv("GOOGLE_CLIENT_ID"))
-//                .clientSecret(System.getenv("GOOGLE_CLIENT_SECRET"))
-//                .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
-//                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-//                .scope("email", "profile")
-//                .authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
-//                .tokenUri("https://www.googleapis.com/oauth2/v4/token")
-//                .userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
-//                .userNameAttributeName(IdTokenClaimNames.SUB)
-//                .build();
-//    }
 }
