@@ -56,6 +56,11 @@ public class Comment extends BaseEntity {
     @Column(name = "moderation_due_at")
     private LocalDateTime moderationDueAt;
 
+    @Version
+    @Column(nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private Long version = 0L;
+
+
     // 비즈니스 메서드들
     public boolean isDeleted() {
         return deletedAt != null;

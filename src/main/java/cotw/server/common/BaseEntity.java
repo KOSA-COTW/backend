@@ -23,7 +23,5 @@ public class BaseEntity {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    @Version
-    @Column(nullable = false, columnDefinition = "BIGINT DEFAULT 0")
-    private Long version = 0L;
+
 }
