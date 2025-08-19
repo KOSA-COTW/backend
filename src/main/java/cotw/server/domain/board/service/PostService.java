@@ -11,6 +11,7 @@ import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -169,6 +170,21 @@ public class PostService {
         List<Post> posts = postRepository.findAllByIsPublicTrue();
 
         return posts.stream()
+                .map(PostListResponseDto::new)
+                .toList();
+    }
+
+    /**
+     * 메인 화면용 6개
+     * - 공개글만
+     * - 마감 임박순 + 생성일 최신순
+     * - 최대 6개
+     */
+    @Transactional(readOnly = true)
+    public List<PostListResponseDto> getHomePosts() {
+        var today = LocalDate.now();
+        var top6 = postRepository.findHomePosts(today, PageRequest.of(0, 6));
+        return top6.stream()
                 .map(PostListResponseDto::new)
                 .toList();
     }
