@@ -1,5 +1,6 @@
 package cotw.server.domain.member.entity;
 
+import cotw.server.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,7 +16,7 @@ import java.time.LocalDateTime;
         name = "member",
         uniqueConstraints = @UniqueConstraint(columnNames = {"provider", "provider_id"})
 )
-public class Member {
+public class Member extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
