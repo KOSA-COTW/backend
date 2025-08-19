@@ -107,4 +107,13 @@ public class PostController {
         List<PostListResponseDto> posts = postService.getAllPublicPosts();
         return ResponseEntity.ok(posts);
     }
+
+    /**
+     * 메인 화면용: 공개 + 마감 임박 6개
+     * - 누구나 접근 가능
+     */
+    @GetMapping("/home")
+    public ResponseEntity<List<PostListResponseDto>> getHomePosts() {
+        return ResponseEntity.ok(postService.getHomePosts());
+    }
 }
