@@ -85,6 +85,7 @@ public class SecurityConfig {
                 .requestMatchers("/oauth2/**", "/login/oauth2/code/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/", "/auth/login", "/auth/signup", "/reissue").permitAll()
+                .requestMatchers("/api/payments/success", "/api/payments/confirm").permitAll()
 
                 // 공개 조회
                 .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()

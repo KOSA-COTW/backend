@@ -9,4 +9,5 @@ public class PaymentCreateRequest {
 
     private Long postId;
     private Integer amount;
+    private String orderId; // 프론트엔드에서 생성한 orderId
 }

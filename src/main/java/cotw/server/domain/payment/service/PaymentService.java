@@ -2,6 +2,7 @@ package cotw.server.domain.payment.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import cotw.server.domain.board.entity.Participant;
 import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.board.repository.PostRepository;
 import cotw.server.domain.member.entity.Member;
@@ -59,8 +60,10 @@ public class PaymentService {
         Post post = postRepository.findById(request.getPostId())
                 .orElseThrow(() -> new PaymentException("존재하지 않는 게시글입니다."));
 
-        // orderId 생성 (OrderIdGenerator 사용)
-        String orderId = orderIdGenerator.generateOrderId();
+        // orderId 사용 (프론트엔드에서 전달받은 것을 우선 사용, 없으면 생성)
+        String orderId = request.getOrderId() != null ? request.getOrderId() : orderIdGenerator.generateOrderId();
+        
+        System.out.println("Creating PaymentEvent with orderId: " + orderId);
 
         // PaymentEvent 생성 및 저장
         PaymentEvent paymentEvent = PaymentEvent.builder()
@@ -83,6 +86,15 @@ public class PaymentService {
 
     public PaymentConfirmResponse confirmPayment(PaymentConfirmRequest request) {
         // 1. PaymentEvent 조회 및 검증
+        System.out.println("Looking for PaymentEvent with orderId: " + request.getOrderId());
+        
+        // DB에 있는 모든 PaymentEvent 조회해서 로깅
+        List<PaymentEvent> allEvents = paymentEventRepository.findAll();
+        System.out.println("All PaymentEvents in DB:");
+        for (PaymentEvent event : allEvents) {
+            System.out.println("  - OrderId: " + event.getOrderId() + ", Status: " + event.getStatus());
+        }
+        
         PaymentEvent paymentEvent = paymentEventRepository.findByOrderId(request.getOrderId())
                 .orElseThrow(() -> new PaymentException("존재하지 않는 주문입니다."));
 
@@ -122,7 +134,15 @@ public class PaymentService {
         // 5. PaymentEvent 상태 업데이트
         paymentEvent.updateStatus(PaymentStatus.DONE);
 
-        // 6. 비동기로 PaymentLedger 생성
+        // 6. Post의 currentAmount 업데이트 (기부 금액 추가)
+        post.addDonationAmount(request.getAmount());
+        postRepository.save(post);
+        System.out.println("Post currentAmount updated: " + post.getCurrentAmount());
+
+        // 7. Participant 추가 (기부자 정보 저장)
+        createParticipant(member, post, request.getAmount());
+
+        // 8. 비동기로 PaymentLedger 생성
         ledgerService.createPaymentLedgerAsync(paymentOrder);
 
         return PaymentConfirmResponse.builder()
@@ -200,5 +220,19 @@ public class PaymentService {
                 .type(order.getType())
                 .createdAt(order.getCreatedAt())
                 .build();
+    }
+    
+    private void createParticipant(Member member, Post post, Integer amount) {
+        // 기부 참여자 정보 생성
+        Participant participant = Participant.builder()
+                .member(member)
+                .post(post)
+                .amount(amount)
+                .build();
+        
+        // Post에 참여자 추가 (cascade로 자동 저장됨)
+        post.addParticipant(participant);
+        
+        System.out.println("Participant added: " + member.getName() + " donated " + amount + " to " + post.getTitle());
     }
 }
