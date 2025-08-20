@@ -19,6 +19,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
         this.attributes = Collections.emptyMap();
     }
 
+
     // OAuth2 로그인
     public CustomUserDetails(Member member, Map<String, Object> attributes) {
         this.member = member;

@@ -79,6 +79,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
                     );
                 });
 
+
         // 3) 권한 및 Principal 반환
         Collection<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("USER"));
 

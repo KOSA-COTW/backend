@@ -1,6 +1,5 @@
 package cotw.server.domain.member.repository;
 
-import aj.org.objectweb.asm.commons.Remapper;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.ProviderType;
 import org.springframework.data.jpa.repository.JpaRepository;
