@@ -69,11 +69,7 @@ public class CommentService {
                 .map(c -> toRes(c, viewerId));  // ✅
     }
 
-    // 관리자 복원/삭제
-    public void adminRestore(Long commentId) {
-        Comment c = get(commentId);
-        c.restoreByAdmin(); // 신고수 0 + 공개 + 삭제/검토마감 초기화
-    }
+
     public void adminDelete(Long commentId) {
         Comment c = get(commentId);
         c.setDeletedAt(LocalDateTime.now());
