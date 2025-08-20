@@ -34,6 +34,12 @@ public class PaymentController {
             @RequestParam String paymentKey,
             @RequestParam Integer amount) {
 
+        System.out.println("=== Payment Success Called ===");
+        System.out.println("PaymentType: " + paymentType);
+        System.out.println("OrderId: " + orderId);
+        System.out.println("PaymentKey: " + paymentKey);
+        System.out.println("Amount: " + amount);
+
         PaymentConfirmRequest confirmRequest = PaymentConfirmRequest.builder()
                 .paymentKey(paymentKey)
                 .orderId(orderId)
@@ -41,15 +47,19 @@ public class PaymentController {
                 .build();
 
         try {
+            System.out.println("Calling paymentService.confirmPayment...");
             PaymentConfirmResponse response = paymentService.confirmPayment(confirmRequest);
+            System.out.println("Payment confirmation successful: " + response);
             // 성공 페이지로 리다이렉트
             return ResponseEntity.status(302)
                     .header("Location", "http://localhost:5173/payment/success?orderId=" + orderId)
                     .build();
         } catch (Exception e) {
-            // 실패 페이지로 리다이렉트
+            System.err.println("Payment confirmation failed: " + e.getMessage());
+            e.printStackTrace();
+            // 실패 페이지로 리다이렉트 (한글 메시지 제거)
             return ResponseEntity.status(302)
-                    .header("Location", "http://localhost:5173/payment/fail?message=" + e.getMessage())
+                    .header("Location", "http://localhost:5173/payment/fail?error=payment_failed")
                     .build();
         }
     }

@@ -85,9 +85,15 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String roleFromAuth = authentication.getAuthorities().iterator().next().getAuthority();
         String roleForToken = roleFromAuth.replaceFirst("^ROLE_", "");
 
+        // Member ID 추출
+        Long memberId = null;
+        if (authentication.getPrincipal() instanceof CustomUserDetails) {
+            memberId = ((CustomUserDetails) authentication.getPrincipal()).getMemberId();
+        }
+
         //토큰 생성
-        String access = jwtUtil.createToken("access", username, roleForToken, 3600000L);
-        String refresh = jwtUtil.createToken("refresh", username, roleForToken, 86400000L);
+        String access = jwtUtil.createToken("access", username, roleForToken, memberId, 3600000L);
+        String refresh = jwtUtil.createToken("refresh", username, roleForToken, memberId, 86400000L);
 
         // refresh token save
         addRefreshToken(username, refresh, 1000*60*60*24L);

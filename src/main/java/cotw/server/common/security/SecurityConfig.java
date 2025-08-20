@@ -91,6 +91,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/login", "/", "/auth/signup").permitAll()
                         .requestMatchers("/reissue").permitAll()
+                        .requestMatchers("/api/payments/success", "/api/payments/confirm").permitAll()
 
                         // 공개 목록 조회는 누구나
                         .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()

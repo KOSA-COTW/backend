@@ -30,6 +30,14 @@ public class JwtFilter extends OncePerRequestFilter {
 
         // 헤더에서 access키에 담긴 토큰을 꺼냄
         String accessToken = request.getHeader("access");
+        
+        // Authorization 헤더도 확인 (Bearer 토큰 형식)
+        if (accessToken == null) {
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                accessToken = authHeader.substring(7);
+            }
+        }
 
         // 토큰이 없다면 다음 필터로 넘김
         if (accessToken == null) {
@@ -67,14 +75,16 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-        // username, role 값을 획득
+        // username, role, memberId 값을 획득
         String username = jwtUtil.getUsername(accessToken);
         String role = jwtUtil.getRole(accessToken);
+        Long memberId = jwtUtil.getMemberId(accessToken);
         String roleFromToken = jwtUtil.getRole(accessToken); // ex) "USER"
         String roleWithPrefix = roleFromToken.startsWith("ROLE_") ? roleFromToken : "ROLE_" + roleFromToken; // ex) "ROLE_USER"
 
         // enum 매칭은 접두어 없는 값 사용
         Member member = new Member();
+        member.setId(memberId);
         member.setEmail(username);
         member.setRole(Role.valueOf(roleFromToken));
         CustomUserDetails customUserDetails = new CustomUserDetails(member);
