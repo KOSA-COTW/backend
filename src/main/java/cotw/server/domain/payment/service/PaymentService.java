@@ -20,6 +20,7 @@ import cotw.server.domain.payment.entity.PaymentOrder;
 import cotw.server.domain.payment.entity.PaymentStatus;
 import cotw.server.domain.payment.entity.PaymentType;
 import cotw.server.domain.payment.exception.PaymentException;
+import cotw.server.domain.payment.exception.PaymentIdempotencyException;
 import cotw.server.domain.payment.repository.PaymentOrderRepository;
 import cotw.server.domain.payment.repository.PaymentRepository;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
@@ -98,12 +99,37 @@ public class PaymentService {
         PaymentEvent paymentEvent = paymentEventRepository.findByOrderId(request.getOrderId())
                 .orElseThrow(() -> new PaymentException("존재하지 않는 주문입니다."));
 
-        // 2. 금액 검증
+        // 2. 멱등성 검증 - 이미 처리된 결제인지 확인
+        if (paymentEvent.isAlreadyProcessed()) {
+            System.out.println("Payment already processed for orderId: " + request.getOrderId());
+            // 이미 처리된 경우 기존 PaymentOrder 반환
+            PaymentOrder existingOrder = paymentOrderRepository.findByOrderId(request.getOrderId())
+                    .orElseThrow(() -> new PaymentException("결제가 완료되었지만 주문 정보를 찾을 수 없습니다."));
+            
+            Post post = postRepository.findById(existingOrder.getPost().getId())
+                    .orElseThrow(() -> new PaymentException("존재하지 않는 게시글입니다."));
+            
+            return PaymentConfirmResponse.builder()
+                    .orderId(existingOrder.getOrderId())
+                    .paymentKey(existingOrder.getPaymentKey())
+                    .status(existingOrder.getStatus())
+                    .type(existingOrder.getType())
+                    .amount(existingOrder.getAmount())
+                    .orderName(post.getTitle())
+                    .build();
+        }
+
+        // 3. 금액 검증
         if (!paymentEvent.getAmount().equals(request.getAmount())) {
             throw new PaymentException("결제 금액이 일치하지 않습니다.");
         }
 
-        // 3. 토스 결제 승인 API 호출 (비동기)
+        // 4. 중복 PaymentOrder 생성 방지 검증
+        if (paymentOrderRepository.existsByOrderId(request.getOrderId())) {
+            throw new PaymentIdempotencyException("이미 처리된 주문입니다.");
+        }
+
+        // 5. 토스 결제 승인 API 호출 (비동기)
         TossPaymentResponse tossResponse;
         try {
             tossResponse = callTossConfirmApiAsync(request).get();
@@ -111,7 +137,7 @@ public class PaymentService {
             throw new PaymentException("결제 승인 처리 중 오류가 발생했습니다: " + e.getMessage());
         }
 
-        // 4. PaymentOrder 생성
+        // 6. PaymentOrder 생성
         Member member = memberRepository.findById(paymentEvent.getMemberId())
                 .orElseThrow(() -> new PaymentException("존재하지 않는 회원입니다."));
 
@@ -131,18 +157,24 @@ public class PaymentService {
 
         paymentOrderRepository.save(paymentOrder);
 
-        // 5. PaymentEvent 상태 업데이트
-        paymentEvent.updateStatus(PaymentStatus.DONE);
+        // 7. PaymentEvent 상태 업데이트 (낙관적 락으로 동시성 제어)
+        try {
+            paymentEvent.updateStatus(PaymentStatus.DONE);
+            paymentEventRepository.save(paymentEvent);
+        } catch (Exception e) {
+            // 낙관적 락 실패 시 이미 다른 요청에서 처리된 것으로 간주
+            throw new PaymentIdempotencyException("동시 처리로 인해 결제가 중복 처리되었습니다.");
+        }
 
-        // 6. Post의 currentAmount 업데이트 (기부 금액 추가)
+        // 8. Post의 currentAmount 업데이트 (기부 금액 추가)
         post.addDonationAmount(request.getAmount());
         postRepository.save(post);
         System.out.println("Post currentAmount updated: " + post.getCurrentAmount());
 
-        // 7. Participant 추가 (기부자 정보 저장)
+        // 9. Participant 추가 (기부자 정보 저장)
         createParticipant(member, post, request.getAmount());
 
-        // 8. 비동기로 PaymentLedger 생성
+        // 10. 비동기로 PaymentLedger 생성
         ledgerService.createPaymentLedgerAsync(paymentOrder);
 
         return PaymentConfirmResponse.builder()
@@ -184,6 +216,15 @@ public class PaymentService {
                 .encodeToString((tossConfig.getSecretKey() + ":").getBytes());
 
         try {
+            // 토스 API 호출 전 최종 상태 확인 (네트워크 지연으로 인한 중복 호출 방지)
+            PaymentEvent finalCheck = paymentEventRepository.findByOrderId(request.getOrderId())
+                    .orElseThrow(() -> new PaymentException("결제 정보를 찾을 수 없습니다."));
+            
+            if (finalCheck.isAlreadyProcessed()) {
+                throw new PaymentIdempotencyException("이미 처리된 결제입니다. 중복 처리를 방지합니다.");
+            }
+
+            System.out.println("Calling Toss API for orderId: " + request.getOrderId());
             return restClient.post()
                     .uri(tossConfig.getApiUrl() + "/v1/payments/confirm")
                     .header(HttpHeaders.AUTHORIZATION, "Basic " + encodedSecretKey)
@@ -192,6 +233,7 @@ public class PaymentService {
                     .retrieve()
                     .body(TossPaymentResponse.class);
         } catch (Exception e) {
+            System.err.println("Toss API call failed for orderId: " + request.getOrderId() + ", Error: " + e.getMessage());
             throw new PaymentException("토스 결제 승인 API 호출 실패: " + e.getMessage());
         }
     }

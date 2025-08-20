@@ -41,7 +41,14 @@ public class PaymentEvent extends BaseEntity {
     @Builder.Default
     private PaymentType type = PaymentType.NORMAL;
 
+    @Version
+    private Long version;
+
     public void updateStatus(PaymentStatus status) {
         this.status = status;
+    }
+    
+    public boolean isAlreadyProcessed() {
+        return this.status == PaymentStatus.DONE;
     }
 }
