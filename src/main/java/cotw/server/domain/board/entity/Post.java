@@ -87,4 +87,16 @@ public class Post extends BaseEntity {
     public void changeVisibility(boolean isPublic) {
         this.isPublic = isPublic;
     }
+    
+    // 기부 금액 추가
+    public void addDonationAmount(int donationAmount) {
+        if (donationAmount > 0) {
+            this.currentAmount += donationAmount;
+        }
+    }
+    
+    // 기부 참여자 추가
+    public void addParticipant(Participant participant) {
+        this.participants.add(participant);
+    }
 }

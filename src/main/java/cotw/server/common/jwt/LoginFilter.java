@@ -8,9 +8,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -21,7 +19,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -91,8 +88,6 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         // ex) "ROLE_USER" -> "USER" 로 변환해서 토큰에 담기
         String roleFromAuth = authentication.getAuthorities().iterator().next().getAuthority();
         String roleForToken = roleFromAuth.replaceFirst("^ROLE_", "");
-
-
 
         // 토큰 생성 (ms)
         String access  = jwtUtil.createToken("access",  username, roleForToken, 600_000L);     // 10분

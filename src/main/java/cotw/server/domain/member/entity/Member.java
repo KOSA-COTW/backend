@@ -52,9 +52,6 @@ public class Member extends BaseEntity {
     @Builder.Default
     private Role role = Role.USER;
 
-    private LocalDateTime createdDate;
-    private LocalDateTime updatedDate;
-
     // == 팩토리 ==
     public static Member ofLocal(String name, String email, String passwordHash) {
         Member m = new Member();
@@ -73,7 +70,7 @@ public class Member extends BaseEntity {
         m.providerId = providerId;
         m.name = name;
         m.email = email != null ? email.toLowerCase() : null;
-        m.createdDate = LocalDateTime.now();
+        // createdAt은 JPA Auditing이 자동으로 설정
         return m;
     }
 
