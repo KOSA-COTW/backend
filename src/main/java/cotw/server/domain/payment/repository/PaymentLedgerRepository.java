@@ -1,0 +1,15 @@
+package cotw.server.domain.payment.repository;
+
+import cotw.server.domain.payment.entity.PaymentLedger;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface PaymentLedgerRepository extends JpaRepository<PaymentLedger, Long> {
+
+    List<PaymentLedger> findByMemberIdOrderByCreatedAtDesc(Long memberId);
+    List<PaymentLedger> findByPostIdOrderByCreatedAtDesc(Long postId);
+    List<PaymentLedger> findByOrderIdOrderByCreatedAtDesc(String orderId);
+}
