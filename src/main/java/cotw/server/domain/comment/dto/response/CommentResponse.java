@@ -11,5 +11,6 @@ public record CommentResponse(
         int reportCount,
         boolean isPublic,
         LocalDateTime createdAt,
-        LocalDateTime moderationDueAt
+        LocalDateTime moderationDueAt,
+        boolean liked
 ) {}
