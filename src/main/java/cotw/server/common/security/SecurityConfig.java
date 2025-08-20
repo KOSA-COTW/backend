@@ -7,6 +7,7 @@ import cotw.server.common.jwt.JwtFilter;
 import cotw.server.common.jwt.JwtUtil;
 import cotw.server.common.jwt.LoginFilter;
 import cotw.server.common.jwt.repository.RefreshTokenRepository;
+import cotw.server.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,13 +36,19 @@ public class SecurityConfig {
     private final RefreshTokenRepository refreshTokenRepository;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
+    private final MemberRepository memberRepository;
 
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
-
         return authenticationConfiguration.getAuthenticationManager();
     }
 
+    @Bean
+    public BCryptPasswordEncoder bCryptPasswordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    /** 커스텀 로그인 필터 (ID/PW → JWT 발급) */
     @Bean
     public LoginFilter loginFilter() throws Exception {
         LoginFilter loginFilter = new LoginFilter(
@@ -49,77 +56,66 @@ public class SecurityConfig {
                 jwtUtil,
                 refreshTokenRepository
         );
-        loginFilter.setFilterProcessesUrl("/auth/login");  // 로그인 URL 변경
+        loginFilter.setFilterProcessesUrl("/auth/login"); // 로그인 엔드포인트
         return loginFilter;
-    }
-
-    @Bean
-    public BCryptPasswordEncoder bCryptPasswordEncoder() {
-
-        return new BCryptPasswordEncoder();
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
+        // CORS
         http.cors(cors -> cors.configurationSource(request -> {
             CorsConfiguration config = new CorsConfiguration();
             config.setAllowedOrigins(List.of("http://localhost:5173"));
-            config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+            config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
             config.setAllowedHeaders(List.of("*"));
             config.setExposedHeaders(List.of("Authorization"));
+            config.setAllowCredentials(true); // refresh 토큰 쿠키 사용 시 필수
             config.setMaxAge(3600L);
             return config;
         }));
 
-        //csrf disable
-        http
-                .csrf(AbstractHttpConfigurer::disable);
-
-        //From 로그인 방식 disable
-        http
-                .formLogin(AbstractHttpConfigurer::disable);
-
-        //http basic 인증 방식 disable
-        http
+        // 기본 인증 비활성화
+        http.csrf(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable);
 
+        // 인가 정책
+        http.authorizeHttpRequests(auth -> auth
+                .requestMatchers("/oauth2/**", "/login/oauth2/code/**").permitAll()
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/", "/auth/login", "/auth/signup", "/reissue").permitAll()
 
+                // 공개 조회
+                .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
+
+                // 생성 권한
+                .requestMatchers(HttpMethod.POST, "/api/posts").hasAnyRole("ADMIN", "ORGANIZATION")
+
+                // 관리자 전용
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                .anyRequest().authenticated()
+        );
+
+        // OAuth2 로그인
+        http.oauth2Login(oauth -> oauth
+                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                .successHandler(oauth2LoginSuccessHandler)
+        );
+
+        // 필터 체인 (순서 중요)
         http
-                .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers("/oauth2/**", "/login/oauth2/code/**").permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/auth/login", "/", "/auth/signup").permitAll()
-                        .requestMatchers("/reissue").permitAll()
-
-                        // 공개 목록 조회는 누구나
-                        .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
-                        // 단일 게시글 조회는 정책에 맞게 (공개글은 누구나, 비공개는 서버에서 검사)
-                        .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
-                        // 게시글 생성은 관리자/단체만
-                        .requestMatchers(HttpMethod.POST, "/api/posts").hasAnyRole("ADMIN", "ORGANIZATION")
-
-//                        .requestMatchers("/admin").hasRole("ADMIN")
-                        .anyRequest().authenticated());
-
-        http
-                .oauth2Login(oauth -> oauth
-                        .userInfoEndpoint(userInfo -> userInfo
-                                .userService(customOAuth2UserService))
-                        .successHandler(oauth2LoginSuccessHandler));
-
-
-        http
-                .addFilterBefore(new JwtFilter(jwtUtil), LoginFilter.class)
-                .addFilterAt(new LoginFilter(authenticationManager(), jwtUtil, refreshTokenRepository),
-                        UsernamePasswordAuthenticationFilter.class)
+                // 1) JWT 인증 필터: 모든 요청 전에 토큰 해석/인증
+                .addFilterBefore(new JwtFilter(jwtUtil, memberRepository), UsernamePasswordAuthenticationFilter.class)
+                // 2) 커스텀 로그인 필터: /auth/login 처리하여 JWT 발급
+                .addFilterAt(loginFilter(), UsernamePasswordAuthenticationFilter.class)
+                // 3) 커스텀 로그아웃 필터: 로그아웃/리프레시토큰 제거 등
                 .addFilterBefore(new CustomLogoutFilter(jwtUtil, refreshTokenRepository), LogoutFilter.class);
 
-
-        //세션 설정
-        http
-                .sessionManagement((session) -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        // 세션 비활성화 (JWT 방식)
+        http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
     }
