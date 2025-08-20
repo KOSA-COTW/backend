@@ -24,7 +24,6 @@ public record SignUpRequestDTO(
                 .email(email)
                 .password(password)
                 .role(role)
-                .createdDate(LocalDateTime.now())
                 .build();
     }
 }

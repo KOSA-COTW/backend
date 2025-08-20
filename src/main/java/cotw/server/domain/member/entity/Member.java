@@ -52,8 +52,6 @@ public class Member extends BaseEntity {
     @Builder.Default
     private Role role = Role.USER;
 
-    private LocalDateTime createdDate;
-    private LocalDateTime updatedDate;
 
     // == 팩토리 ==
     public static Member ofLocal(String name, String email, String passwordHash) {
@@ -73,7 +71,6 @@ public class Member extends BaseEntity {
         m.providerId = providerId;
         m.name = name;
         m.email = email != null ? email.toLowerCase() : null;
-        m.createdDate = LocalDateTime.now();
         return m;
     }
 
