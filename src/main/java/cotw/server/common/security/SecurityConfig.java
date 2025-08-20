@@ -1,11 +1,14 @@
 package cotw.server.common.security;
 
+import cotw.server.common.auth.CustomOAuth2UserService;
+import cotw.server.common.auth.OAuth2LoginSuccessHandler;
 import cotw.server.common.jwt.CustomLogoutFilter;
 import cotw.server.common.jwt.JwtFilter;
 import cotw.server.common.jwt.JwtUtil;
 import cotw.server.common.jwt.LoginFilter;
 import cotw.server.common.jwt.repository.RefreshTokenRepository;
 import cotw.server.domain.member.repository.MemberRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -25,71 +28,94 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final AuthenticationConfiguration authenticationConfiguration;
     private final JwtUtil jwtUtil;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
+    private final MemberRepository memberRepository;
 
-    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration,
-                          JwtUtil jwtUtil,
-                          RefreshTokenRepository refreshTokenRepository) {
-        this.authenticationConfiguration = authenticationConfiguration;
-        this.jwtUtil = jwtUtil;
-        this.refreshTokenRepository = refreshTokenRepository;
-    }
-
-    // ✅ AuthenticationManager 등록
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-    // ✅ 비밀번호 암호화용 BCrypt
     @Bean
     public BCryptPasswordEncoder bCryptPasswordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // ✅ SecurityFilterChain 설정
+    /** 커스텀 로그인 필터 (ID/PW → JWT 발급) */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, MemberRepository memberRepository) throws Exception {
+    public LoginFilter loginFilter() throws Exception {
+        LoginFilter loginFilter = new LoginFilter(
+                authenticationManager(),
+                jwtUtil,
+                refreshTokenRepository
+        );
+        loginFilter.setFilterProcessesUrl("/auth/login"); // 로그인 엔드포인트
+        return loginFilter;
+    }
 
-        // CORS 설정
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
+        // CORS
         http.cors(cors -> cors.configurationSource(request -> {
             CorsConfiguration config = new CorsConfiguration();
-            config.setAllowedOrigins(List.of("http://localhost:5173" )); // 프론트엔드 주소
+            config.setAllowedOrigins(List.of("http://localhost:5173"));
             config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
             config.setAllowedHeaders(List.of("*"));
-            config.setExposedHeaders(List.of("Authorization")); // JWT 응답 헤더 노출
-            config.setAllowCredentials(true); // ✅ refresh 쿠키 사용 시 필수
+            config.setExposedHeaders(List.of("Authorization"));
+            config.setAllowCredentials(true); // refresh 토큰 쿠키 사용 시 필수
             config.setMaxAge(3600L);
             return config;
         }));
 
-        // 불필요한 인증 방식 disable
+        // 기본 인증 비활성화
         http.csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable);
 
-        // ✅ 권한별 접근 정책
+        // 인가 정책
         http.authorizeHttpRequests(auth -> auth
+                .requestMatchers("/oauth2/**", "/login/oauth2/code/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/", "/auth/login", "/auth/signup", "/reissue").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN") // 관리자만 접근
+
+                // 공개 조회
+                .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
+
+                // 생성 권한
+                .requestMatchers(HttpMethod.POST, "/api/posts").hasAnyRole("ADMIN", "ORGANIZATION")
+
+                // 관리자 전용
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
                 .anyRequest().authenticated()
         );
-        // ✅ LoginFilter에 URL 매핑 지정 (/auth/login)
-                LoginFilter loginFilter = new LoginFilter(authenticationManager(), jwtUtil, refreshTokenRepository);
-                loginFilter.setFilterProcessesUrl("/auth/login");
 
-                http.addFilterBefore(new JwtFilter(jwtUtil, memberRepository), UsernamePasswordAuthenticationFilter.class).addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class)
+        // OAuth2 로그인
+        http.oauth2Login(oauth -> oauth
+                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                .successHandler(oauth2LoginSuccessHandler)
+        );
 
+        // 필터 체인 (순서 중요)
+        http
+                // 1) JWT 인증 필터: 모든 요청 전에 토큰 해석/인증
+                .addFilterBefore(new JwtFilter(jwtUtil, memberRepository), UsernamePasswordAuthenticationFilter.class)
+                // 2) 커스텀 로그인 필터: /auth/login 처리하여 JWT 발급
+                .addFilterAt(loginFilter(), UsernamePasswordAuthenticationFilter.class)
+                // 3) 커스텀 로그아웃 필터: 로그아웃/리프레시토큰 제거 등
                 .addFilterBefore(new CustomLogoutFilter(jwtUtil, refreshTokenRepository), LogoutFilter.class);
 
-        // ✅ 세션 사용 X → JWT 방식
-        http.sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        // 세션 비활성화 (JWT 방식)
+        http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
     }

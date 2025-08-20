@@ -3,10 +3,13 @@ package cotw.server.domain.board.controller;
 import cotw.server.common.jwt.CustomUserDetails;
 import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
+import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
 import cotw.server.domain.board.service.PostService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,8 +27,10 @@ public class PostController {
      * - 로그인한 사용자만 가능
      * - 작성 시 기본 isPublic = false (비공개)
      */
+    @PreAuthorize("hasAnyRole('ADMIN','ORGANIZATION')")
     @PostMapping
-    public ResponseEntity<?> createPost(@AuthenticationPrincipal CustomUserDetails principal, @RequestBody PostCreateRequestDto dto) {
+    public ResponseEntity<?> createPost(@AuthenticationPrincipal CustomUserDetails principal,
+                                        @Valid @RequestBody PostCreateRequestDto dto) {
         Long postId = postService.createPost(dto, principal.getUsername());
         return ResponseEntity.ok(postId);
     }
@@ -82,6 +87,7 @@ public class PostController {
      * - 관리자만 가능
      * - 작성 시 기본 false → 관리자가 true로 변경하면 공개됨
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{postId}/visibility")
     public ResponseEntity<Void> changePostVisibility(
             @AuthenticationPrincipal CustomUserDetails principal,
@@ -89,5 +95,25 @@ public class PostController {
             @RequestParam boolean isPublic) {
         postService.changePostVisibility(postId, isPublic, principal.getUsername());
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 공개된 모든 게시글 목록 조회
+     * - 로그인 여부와 관계없이 접근 가능
+     * - 비공개 게시글은 제외하고, isPublic = true 인 게시글만 반환
+     */
+    @GetMapping
+    public ResponseEntity<List<PostListResponseDto>> getAllPublicPosts() {
+        List<PostListResponseDto> posts = postService.getAllPublicPosts();
+        return ResponseEntity.ok(posts);
+    }
+
+    /**
+     * 메인 화면용: 공개 + 마감 임박 6개
+     * - 누구나 접근 가능
+     */
+    @GetMapping("/home")
+    public ResponseEntity<List<PostListResponseDto>> getHomePosts() {
+        return ResponseEntity.ok(postService.getHomePosts());
     }
 }

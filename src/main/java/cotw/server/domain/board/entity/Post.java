@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,6 +51,10 @@ public class Post extends BaseEntity {
     // 공개 여부
     @Column(nullable = false)
     private boolean isPublic;
+
+    // 기부 마감일
+    @Column(nullable=false)
+    private LocalDate deadline;
 
     // 이미지 리스트
     @Builder.Default
