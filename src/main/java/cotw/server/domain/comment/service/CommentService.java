@@ -5,6 +5,7 @@ import cotw.server.domain.comment.dto.request.CreateCommentRequest;
 import cotw.server.domain.comment.dto.request.UpdateCommentRequest;
 import cotw.server.domain.comment.dto.response.CommentResponse;
 
+import cotw.server.domain.comment.repository.CommentLikeRepository;
 import cotw.server.domain.comment.repository.CommentRepository;
 import cotw.server.domain.member.entity.Member;
 import jakarta.persistence.EntityManager;
@@ -26,6 +27,7 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final EntityManager em;
+    private final CommentLikeRepository likeRepository;
 
     // 작성 (JWT의 memberId 사용)
     public CommentResponse create(Long memberId, CreateCommentRequest req) {
@@ -57,21 +59,17 @@ public class CommentService {
     @Transactional(readOnly = true)
     public Page<CommentResponse> listLatest(Long postId, Long viewerId, boolean admin, Pageable pageable) {
         return commentRepository.findLatestVisible(postId, viewerId, admin, pageable)
-                .map(this::toRes);
+                .map(c -> toRes(c, viewerId));  // ✅
     }
 
     // 목록: 좋아요순
     @Transactional(readOnly = true)
     public Page<CommentResponse> listByLike(Long postId, Long viewerId, boolean admin, Pageable pageable) {
         return commentRepository.findLikeVisible(postId, viewerId, admin, pageable)
-                .map(this::toRes);
+                .map(c -> toRes(c, viewerId));  // ✅
     }
 
-    // 관리자 복원/삭제
-    public void adminRestore(Long commentId) {
-        Comment c = get(commentId);
-        c.restoreByAdmin(); // 신고수 0 + 공개 + 삭제/검토마감 초기화
-    }
+
     public void adminDelete(Long commentId) {
         Comment c = get(commentId);
         c.setDeletedAt(LocalDateTime.now());
@@ -87,11 +85,26 @@ public class CommentService {
         if (!Objects.equals(c.getMember().getId(), requesterId))
             throw new AccessDeniedException("권한이 없습니다.");
     }
+    // 기존 toRes 수정: 작성/수정 직후엔 liked=false로 고정(필요 시 오버로드 사용)
     private CommentResponse toRes(Comment c) {
         return new CommentResponse(
                 c.getId(), c.getPost().getId(), c.getMember().getId(),
                 c.getContent(), c.getLikeCount(), c.getReportCount(), c.isPublic(),
-                c.getCreatedAt(), c.getModerationDueAt()
+                c.getCreatedAt(), c.getModerationDueAt(),
+                false // ✅ 기본값
+        );
+    }
+
+    // 오버로드 추가: viewerId로 liked 계산
+    private CommentResponse toRes(Comment c, Long viewerId) {
+        boolean liked = (viewerId != null)
+                && likeRepository.existsByCommentIdAndMemberId(c.getId(), viewerId);
+
+        return new CommentResponse(
+                c.getId(), c.getPost().getId(), c.getMember().getId(),
+                c.getContent(), c.getLikeCount(), c.getReportCount(), c.isPublic(),
+                c.getCreatedAt(), c.getModerationDueAt(),
+                liked // ✅ 계산된 값
         );
     }
 }
