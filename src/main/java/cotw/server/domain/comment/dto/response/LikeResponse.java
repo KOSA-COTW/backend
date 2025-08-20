@@ -1,3 +1,3 @@
 package cotw.server.domain.comment.dto.response;
 
-public record LikeResponse(Long commentId, int likeCount) {}
+public record LikeResponse(Long commentId, int likeCount, boolean liked) {}
