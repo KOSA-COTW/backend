@@ -1,9 +1,6 @@
 package cotw.server.common.jwt.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,6 +15,8 @@ public class RefreshToken {
     private Long id;
 
     private String email;
+    
+    @Column(length = 512)  // JWT 토큰 길이를 고려하여 512자로 확장
     private String refreshToken;
 
     private String expiryDate;

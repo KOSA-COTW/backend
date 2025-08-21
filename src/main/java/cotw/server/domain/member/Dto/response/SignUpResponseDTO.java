@@ -16,7 +16,7 @@ public record SignUpResponseDTO(
                 member.getName(),
                 member.getEmail(),
                 member.getPassword(),
-                member.getCreatedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                member.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
         );
     }
 }
