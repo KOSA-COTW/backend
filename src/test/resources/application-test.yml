@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+  
+  h2:
+    console:
+      enabled: true
+  
+  jpa:
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+        default_schema: 
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+
+# 테스트용 토스 결제 설정 (실제 API 호출 없이 테스트)
+toss:
+  client-key: test_client_key
+  secret-key: test_secret_key
+  api-url: https://api.tosspayments.com
+  success-url: http://localhost:5173/payment/success
+  fail-url: http://localhost:5173/payment/fail
+
+logging:
+  level:
+    org:
+      hibernate:
+        sql: debug
+        type: trace
+    cotw.server.domain.payment: debug

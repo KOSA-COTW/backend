@@ -49,7 +49,7 @@ public class Post extends BaseEntity {
     private int currentAmount;
 
     // 공개 여부
-    @Column(nullable = false)
+    @Column(name = "is_public", nullable = false)
     private boolean isPublic;
 
     // 기부 마감일

@@ -143,4 +143,13 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
         if (member.getId() != null) return String.valueOf(member.getId());
         return member.getEmail();
     }
+
+    // Member ID를 반환하는 메서드 추가
+    public Long getMemberId() {
+        return member.getId();
+    }
+
+    public Long getId() {
+        return member.getId();
+    }
 }
