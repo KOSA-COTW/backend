@@ -37,6 +37,7 @@ public class SecurityConfig {
     private final RefreshTokenRepository refreshTokenRepository;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
+    private final MemberRepository memberRepository;
 
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
@@ -81,19 +82,13 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable);
 
 
-        http
-                .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers("/oauth2/**", "/login/oauth2/code/**").permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/auth/login", "/", "/auth/signup").permitAll()
-                        .requestMatchers("/reissue").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/info").permitAll()
         // 인가 정책
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/oauth2/**", "/login/oauth2/code/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/", "/auth/login", "/auth/signup", "/reissue").permitAll()
                 .requestMatchers("/api/payments/success", "/api/payments/confirm").permitAll()
+                .requestMatchers(HttpMethod.GET, "/info").permitAll()
 
                 // 공개 조회
                 .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
