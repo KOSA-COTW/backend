@@ -14,6 +14,21 @@ import java.util.Map;
 @RestControllerAdvice
 public class PaymentExceptionHandler {
 
+    @ExceptionHandler(PaymentIdempotencyException.class)
+    public ResponseEntity<Map<String, Object>> handlePaymentIdempotencyException(PaymentIdempotencyException e) {
+        log.warn("Payment idempotency violation: {}", e.getMessage());
+
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("timestamp", LocalDateTime.now());
+        errorResponse.put("status", HttpStatus.CONFLICT.value());
+        errorResponse.put("error", "Payment Idempotency Error");
+        errorResponse.put("errorCode", e.getErrorCode());
+        errorResponse.put("message", e.getMessage());
+        errorResponse.put("retryable", false);
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
     @ExceptionHandler(PaymentException.class)
     public ResponseEntity<Map<String, Object>> handlePaymentException(PaymentException e) {
         log.error("Payment exception occurred: {}", e.getMessage(), e);

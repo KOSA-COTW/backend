@@ -109,6 +109,13 @@ public class Post extends BaseEntity {
         }
     }
     
+    // 기부 금액 차감 (취소 시 사용)
+    public void subtractDonationAmount(int donationAmount) {
+        if (donationAmount > 0 && this.currentAmount >= donationAmount) {
+            this.currentAmount -= donationAmount;
+        }
+    }
+    
     // 기부 참여자 추가
     public void addParticipant(Participant participant) {
         this.participants.add(participant);

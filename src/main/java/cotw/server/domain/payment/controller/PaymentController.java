@@ -1,8 +1,10 @@
 package cotw.server.domain.payment.controller;
 
 import cotw.server.domain.payment.config.SecurityUtil;
+import cotw.server.domain.payment.dto.request.PaymentCancelRequest;
 import cotw.server.domain.payment.dto.request.PaymentConfirmRequest;
 import cotw.server.domain.payment.dto.request.PaymentCreateRequest;
+import cotw.server.domain.payment.dto.response.PaymentCancelResponse;
 import cotw.server.domain.payment.dto.response.PaymentConfirmResponse;
 import cotw.server.domain.payment.dto.response.PaymentCreateResponse;
 import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
@@ -88,4 +90,11 @@ public class PaymentController {
         List<PaymentDetailResponse> responses = paymentService.getPaymentsByMember(memberId);
         return ResponseEntity.ok(responses);
     }
+
+    @PostMapping("/cancel")
+    public ResponseEntity<PaymentCancelResponse> cancelPayment(@RequestBody PaymentCancelRequest request) {
+        PaymentCancelResponse response = paymentService.cancelPayment(request);
+        return ResponseEntity.ok(response);
+    }
+
 }

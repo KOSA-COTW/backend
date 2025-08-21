@@ -15,4 +15,14 @@ public class PaymentException extends RuntimeException {
         super(message);
         this.errorCode = errorCode;
     }
+    
+    public PaymentException(String message, Throwable cause) {
+        super(message, cause);
+        this.errorCode = "PAYMENT_ERROR";
+    }
+    
+    public PaymentException(String message, Throwable cause, String errorCode) {
+        super(message, cause);
+        this.errorCode = errorCode;
+    }
 }
