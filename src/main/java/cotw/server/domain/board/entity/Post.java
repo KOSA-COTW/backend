@@ -88,6 +88,7 @@ public class Post extends BaseEntity {
         this.isPublic = isPublic;
     }
 
+
     public boolean isCompleted() {
         return this.deadline.isBefore(LocalDate.now()); // 목표 달성 여부와 관계없이 마감일만으로 판단
     }
