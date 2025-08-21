@@ -49,7 +49,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             HttpServletRequest request,
             HttpServletResponse response
     ) throws AuthenticationException {      // json 타입을 파싱하여 사용.
-        if (request.getContentType().equals("application/json")) {
+        if (request.getContentType() != null && request.getContentType().startsWith("application/json")) {
             try {
                 Map<String, String> credentials = new ObjectMapper().readValue(request.getInputStream(), new TypeReference<>() {});
                 String email = credentials.get("email");
@@ -95,10 +95,10 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         //응답 설정
         response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + access);
 
-        // ✅ 프론트가 Authorization 헤더를 읽을 수 있게 노출(전역 CORS에서 하는 게 더 좋음)
+        // 프론트가 Authorization 헤더를 읽을 수 있게 노출(전역 CORS에서 하는 게 더 좋음)
         response.addHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Authorization");
 
-        // ✅ refresh는 HttpOnly 쿠키로(크로스도메인 테스트면 SameSite=None; Secure 필수)
+        // refresh는 HttpOnly 쿠키로(크로스도메인 테스트면 SameSite=None; Secure 필수)
         ResponseCookie refreshCookie = ResponseCookie.from("refresh", refresh)
                 .httpOnly(true)
                 .secure(false)      // 개발이 http라면 false 또는 프록시/https로 테스트
@@ -148,8 +148,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     private Cookie createCookie(String key, String value) {
         Cookie cookie = new Cookie(key, value);
         cookie.setMaxAge(24 * 60 * 60); // 24시간
-//        cookie.setHttpOnly(true);
-//        cookie.setPath("/"); // 전역 경로 설정
+        cookie.setHttpOnly(true);
+        cookie.setPath("/"); // 전역 경로 설정
         cookie.setSecure(true); // HTTPS에서만 전송
         return cookie;
     }

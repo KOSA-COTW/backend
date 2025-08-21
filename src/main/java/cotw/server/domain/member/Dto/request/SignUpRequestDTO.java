@@ -16,9 +16,6 @@ public record SignUpRequestDTO(
 
         @NotNull(message = "password는 필수 값 입니다")
         String password
-//        @Pattern(regexp = "^[0-9]{6}-[0-9]{7}$", message = "주민등록번호 형식이 유효하지 않습니다.")
-//        @NotNull(message = "주민등록번호는 필수 값 입니다.")
-//        String residentRegistrationNumber
 ) {
 
     public Member toEntity(String email, String password, Role role) {
@@ -26,9 +23,7 @@ public record SignUpRequestDTO(
                 .name(name)
                 .email(email)
                 .password(password)
-//                .residentRegistrationNumber(residentRegistrationNumber)
                 .role(role)
-                .createdDate(LocalDateTime.now())
                 .build();
     }
 }
