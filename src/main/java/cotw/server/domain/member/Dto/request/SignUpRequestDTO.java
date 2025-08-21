@@ -24,7 +24,6 @@ public record SignUpRequestDTO(
                 .email(email)
                 .password(password)
                 .role(role)
-                // createdAt은 JPA Auditing이 자동으로 설정하므로 제거
                 .build();
     }
 }
