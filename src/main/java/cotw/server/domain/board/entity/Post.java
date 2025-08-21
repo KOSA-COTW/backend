@@ -100,6 +100,7 @@ public class Post extends BaseEntity {
     // 기부자 수
     public int getDonorCount() {
         return this.participants != null ? this.participants.size() : 0;
+    }
     
     // 기부 금액 추가
     public void addDonationAmount(int donationAmount) {
