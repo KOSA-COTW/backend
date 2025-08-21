@@ -87,6 +87,19 @@ public class Post extends BaseEntity {
     public void changeVisibility(boolean isPublic) {
         this.isPublic = isPublic;
     }
+
+
+    public boolean isCompleted() {
+        return this.deadline.isBefore(LocalDate.now()); // 목표 달성 여부와 관계없이 마감일만으로 판단
+    }
+
+    public String getStatus() {
+        return isCompleted() ? "COMPLETED" : "ONGOING";
+    }
+
+    // 기부자 수
+    public int getDonorCount() {
+        return this.participants != null ? this.participants.size() : 0;
     
     // 기부 금액 추가
     public void addDonationAmount(int donationAmount) {
@@ -98,5 +111,6 @@ public class Post extends BaseEntity {
     // 기부 참여자 추가
     public void addParticipant(Participant participant) {
         this.participants.add(participant);
+
     }
 }
