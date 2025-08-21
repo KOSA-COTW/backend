@@ -8,6 +8,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -28,8 +29,15 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        // 헤더에서 access키에 담긴 토큰을 꺼냄
-        String accessToken = request.getHeader("access");
+        String accessToken = null;
+
+        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader != null && authHeader.toLowerCase().startsWith("bearer ")) {
+            accessToken = authHeader.substring(7).trim();
+        }
+        if (accessToken == null) {
+            accessToken = request.getHeader("access");
+        }
 
         // 토큰이 없다면 다음 필터로 넘김
         if (accessToken == null) {

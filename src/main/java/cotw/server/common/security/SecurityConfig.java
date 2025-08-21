@@ -7,6 +7,7 @@ import cotw.server.common.jwt.JwtFilter;
 import cotw.server.common.jwt.JwtUtil;
 import cotw.server.common.jwt.LoginFilter;
 import cotw.server.common.jwt.repository.RefreshTokenRepository;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -91,6 +92,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/login", "/", "/auth/signup").permitAll()
                         .requestMatchers("/reissue").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/info").permitAll()
 
                         // 공개 목록 조회는 누구나
                         .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
@@ -111,8 +113,7 @@ public class SecurityConfig {
 
         http
                 .addFilterBefore(new JwtFilter(jwtUtil), LoginFilter.class)
-                .addFilterAt(new LoginFilter(authenticationManager(), jwtUtil, refreshTokenRepository),
-                        UsernamePasswordAuthenticationFilter.class)
+                .addFilterAt(loginFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new CustomLogoutFilter(jwtUtil, refreshTokenRepository), LogoutFilter.class);
 
 
@@ -120,6 +121,13 @@ public class SecurityConfig {
         http
                 .sessionManagement((session) -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
+        http
+                // ✨ 인증 실패 시 401을 주고, 리다이렉트하지 않게
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint((req, res, ex) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
+                        .accessDeniedHandler((req, res, ex) -> res.sendError(HttpServletResponse.SC_FORBIDDEN))
+                );
 
         return http.build();
     }
