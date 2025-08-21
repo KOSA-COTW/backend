@@ -28,6 +28,13 @@ public class PostResponseDto {
     private LocalDateTime updatedAt;
     private List<String> imageUrls;
 
+    private int remaining;
+    private int percent;
+    private int overfunded;
+    private int daysLeft;
+    private int donorCount;
+    private String status;
+
     public PostResponseDto(Post post) {
         this.id = post.getId();
         this.title = post.getTitle();
@@ -44,5 +51,17 @@ public class PostResponseDto {
             imageUrls.add(image.getImageUrl());
         }
         this.imageUrls = imageUrls;
+
+        this.remaining = Math.max(amount - currentAmount, 0);
+        this.percent = amount > 0 ? (int) Math.floor((currentAmount * 100.0) / amount) : 0;
+        this.overfunded = Math.max(currentAmount - amount, 0);
+        this.donorCount = post.getDonorCount();
+        this.status = post.getStatus();
+
+        if (deadline != null) {
+            this.daysLeft = (int) Math.max(0, java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), deadline));
+        } else {
+            this.daysLeft = 0;
+        }
     }
 }

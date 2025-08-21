@@ -109,8 +109,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
                         // 단일 게시글 조회는 정책에 맞게 (공개글은 누구나, 비공개는 서버에서 검사)
                         .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
-                        // 게시글 생성은 관리자/단체만
-                        .requestMatchers(HttpMethod.POST, "/api/posts").hasAnyRole("ADMIN", "ORGANIZATION")
+                        // 게시글 생성
+                        .requestMatchers(HttpMethod.POST, "/api/posts").authenticated()
 
 //                        .requestMatchers("/admin").hasRole("ADMIN")
                         .anyRequest().authenticated());

@@ -14,6 +14,10 @@ public class PostListResponseDto {
     private int remaining;   // = target - raised
     private String image;    // 대표 이미지 URL(없으면 null)
 
+    private int percentRaw;  // 정수 퍼센트
+    private String status;   // "ONGOING" | "COMPLETED"
+
+
     // DB 매핑용 생성자
     public PostListResponseDto(Post post) {
         this.id = post.getId();
@@ -25,6 +29,9 @@ public class PostListResponseDto {
         this.remaining = target - raised;
         this.percent = (target > 0) ? (raised / (double) target) * 100 : 0.0;
         this.image = post.getImages().isEmpty() ? null : post.getImages().get(0).getImageUrl();
+
+        this.percentRaw = (target > 0) ? (int) Math.round((raised / (double) target) * 100) : 0;
+        this.status = post.getStatus();
     }
 
 }

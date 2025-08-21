@@ -27,7 +27,6 @@ public class PostController {
      * - 로그인한 사용자만 가능
      * - 작성 시 기본 isPublic = false (비공개)
      */
-    @PreAuthorize("hasAnyRole('ADMIN','ORGANIZATION')")
     @PostMapping
     public ResponseEntity<?> createPost(@AuthenticationPrincipal CustomUserDetails principal,
                                         @Valid @RequestBody PostCreateRequestDto dto) {
