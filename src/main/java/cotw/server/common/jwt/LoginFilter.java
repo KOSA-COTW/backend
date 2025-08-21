@@ -90,7 +90,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String roleForToken = roleFromAuth.replaceFirst("^ROLE_", "");
 
         // 토큰 생성 (ms)
-        String access  = jwtUtil.createToken("access",  username, roleForToken, 600_000L);     // 10분
+        String access  = jwtUtil.createToken("access",  username, roleForToken, 3_600_000L);   // 1시간
         String refresh = jwtUtil.createToken("refresh", username, roleForToken, 86_400_000L);  // 24시간
 
         // refresh token 저장(DB)

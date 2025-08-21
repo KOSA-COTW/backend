@@ -75,7 +75,7 @@ public class ReissueController {
         Long memberId = jwtUtil.getMemberId(refresh);
 
         //make new JWT
-        String newAccess = jwtUtil.createToken("access", username, role, memberId, 1000*60*10L);
+        String newAccess = jwtUtil.createToken("access", username, role, memberId, 1000*60*60L);  // 1시간
         String newRefresh = jwtUtil.createToken("refresh", username, role, memberId, 1000*60*60*24L);
 
         // Refresh token 저장. DB에 기존 Refresh token 삭제 후 새 Refresh token 저장

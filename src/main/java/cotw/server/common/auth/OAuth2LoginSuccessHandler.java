@@ -58,7 +58,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String role = "ROLE_" + member.getRole().name(); // 예: USER → ROLE_USER
 
         // 3) JWT 생성
-        String access  = jwtUtil.createToken("access",  member.getEmail(), role, 10 * 60 * 1000L);      // 10분
+        String access  = jwtUtil.createToken("access",  member.getEmail(), role, 60 * 60 * 1000L);      // 1시간
         String refresh = jwtUtil.createToken("refresh", member.getEmail(), role, 24 * 60 * 60 * 1000L); // 24시간
 
         // 4) refresh 토큰 저장 (DB)
