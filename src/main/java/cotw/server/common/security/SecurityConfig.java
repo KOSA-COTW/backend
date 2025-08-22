@@ -91,6 +91,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/posts").authenticated()
 
+                .requestMatchers(HttpMethod.GET, "/api/notices/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/notices/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/notices/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/notices/**").hasRole("ADMIN")
+
                 // 관리자 전용
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
