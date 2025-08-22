@@ -20,6 +20,7 @@ public class PostResponseDto {
     private String title;
     private String content;
     private String authorName;
+    private String authorEmail;
     private Category category;
     private List<String> imageUrls;
 
@@ -53,6 +54,7 @@ public class PostResponseDto {
         this.title = post.getTitle();
         this.content = post.getContent();
         this.authorName = post.getAuthor().getName();
+        this.authorEmail = post.getAuthor().getEmail();
         this.category = post.getCategory();
         this.deadline = post.getDeadline();
         this.createdAt = post.getCreatedAt();
