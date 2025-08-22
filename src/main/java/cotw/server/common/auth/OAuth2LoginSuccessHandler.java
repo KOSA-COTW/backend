@@ -55,11 +55,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 .findByProviderAndProviderId(provider, providerId)
                 .orElseThrow(() -> new IllegalStateException("OAuth2 user upsert missing: " + provider + ":" + providerId));
 
-        String role = "ROLE_" + member.getRole().name(); // 예: USER → ROLE_USER
+        String role = member.getRole().name(); // 예: USER → ROLE_USER
+        long v = member.getTokenVersion();
+        long memberId = member.getId();
 
         // 3) JWT 생성
-        String access  = jwtUtil.createToken("access",  member.getEmail(), role, 10 * 60 * 1000L);      // 10분
-        String refresh = jwtUtil.createToken("refresh", member.getEmail(), role, 24 * 60 * 60 * 1000L); // 24시간
+        String access  = jwtUtil.createToken("access",  member.getEmail(), role, memberId, v, 10 * 60 * 1000L);      // 10분
+        String refresh = jwtUtil.createToken("refresh", member.getEmail(), role, memberId, v, 24 * 60 * 60 * 1000L); // 24시간
+
+        // 중복된 토큰이 존재 할 시 기존 것을 삭제 후 저장
+        refreshTokenRepository.deleteByEmail(member.getEmail());
 
         // 4) refresh 토큰 저장 (DB)
         saveRefreshToken(member.getEmail(), refresh, 24 * 60 * 60 * 1000L);
@@ -72,17 +77,12 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         // 5-2) Refresh 토큰은 HttpOnly 쿠키로 (크로스 도메인이면 SameSite=None; Secure 필수)
         ResponseCookie refreshCookie = ResponseCookie.from("refresh", refresh)
                 .httpOnly(true)
-                .secure(true)               // 로컬 http 테스트면 false, https 환경에서 true
+                .secure(false)               // 로컬 http 테스트면 false, https 환경에서 true
                 .sameSite("None")           // 프론트/백이 다른 오리진이면 필수
                 .path("/")
                 .maxAge(Duration.ofDays(1))
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-
-        // (선택) Access를 비노출 쿠키로 주고, 프론트는 API 요청 시 쿠키 기반으로만 동작하게 할 수도 있음
-        // ResponseCookie accessCookie = ResponseCookie.from("access", access)
-        //        .httpOnly(false) .secure(true).sameSite("None").path("/").maxAge(Duration.ofMinutes(10)).build();
-        // response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
 
         // 6) 프론트로 리다이렉트
         // - 헤더는 리다이렉트 후 JS에서 못 읽으므로, 짧게는 해시(#)에 access를 실어 전달 가능

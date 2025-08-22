@@ -18,7 +18,7 @@ public record SignUpRequestDTO(
         String password
 ) {
 
-    public Member toEntity(String email, String password, Role role) {
+    public Member toEntity(String name, String email, String password, Role role) {
         return Member.builder()
                 .name(name)
                 .email(email)

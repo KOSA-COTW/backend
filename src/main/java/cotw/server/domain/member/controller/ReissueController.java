@@ -73,10 +73,11 @@ public class ReissueController {
         String username = jwtUtil.getUsername(refresh);
         String role = jwtUtil.getRole(refresh);
         Long memberId = jwtUtil.getMemberId(refresh);
+        Long tokenVersion = jwtUtil.getTokenVersion(refresh);
 
         //make new JWT
-        String newAccess = jwtUtil.createToken("access", username, role, memberId, 1000*60*10L);
-        String newRefresh = jwtUtil.createToken("refresh", username, role, memberId, 1000*60*60*24L);
+        String newAccess = jwtUtil.createToken("access", username, role, memberId, tokenVersion, 1000*60*10L);
+        String newRefresh = jwtUtil.createToken("refresh", username, role, memberId, tokenVersion, 1000*60*60*24L);
 
         // Refresh token 저장. DB에 기존 Refresh token 삭제 후 새 Refresh token 저장
         refreshTokenRepository.deleteByRefreshToken(refresh);
@@ -105,9 +106,9 @@ public class ReissueController {
     private Cookie createCookie(String key, String value) {
         Cookie cookie = new Cookie(key, value);
         cookie.setMaxAge(24 * 60 * 60); // 24시간
-//        cookie.setHttpOnly(true);
-//        cookie.setPath("/"); // 전역 경로 설정
-        cookie.setSecure(true); // HTTPS에서만 전송
+        cookie.setHttpOnly(true);
+        cookie.setPath("/"); // 전역 경로 설정
+        cookie.setSecure(false); // HTTPS에서만 전송
         return cookie;
     }
 
