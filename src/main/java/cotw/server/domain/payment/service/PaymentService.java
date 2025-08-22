@@ -17,9 +17,11 @@ import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
 import cotw.server.domain.payment.dto.response.TossCancelResponse;
 import cotw.server.domain.payment.dto.response.TossPaymentResponse;
 import cotw.server.domain.payment.entity.PaymentEvent;
+import cotw.server.domain.payment.entity.PaymentLedger;
 import cotw.server.domain.payment.entity.PaymentOrder;
 import cotw.server.domain.payment.entity.PaymentStatus;
 import cotw.server.domain.payment.entity.PaymentType;
+import cotw.server.domain.payment.entity.TransactionType;
 import cotw.server.domain.payment.exception.PaymentException;
 import cotw.server.domain.payment.exception.PaymentIdempotencyException;
 import cotw.server.domain.payment.repository.PaymentOrderRepository;
@@ -50,6 +52,7 @@ public class PaymentService {
     private final PostRepository postRepository;
     private final TossPaymentConfig tossConfig;
     private final LedgerService ledgerService;
+    private final TransactionService transactionService;
     private final ObjectMapper objectMapper;
     private final RestClient restClient;
 
@@ -88,6 +91,16 @@ public class PaymentService {
     }
 
     public void confirmPayment(PaymentConfirmRequest request) {
+        // 0. 트랜잭션 로깅 - 결제 승인 시도
+        transactionService.logTransactionAsync(
+            request.getOrderId(),
+            TransactionType.PAYMENT_CONFIRM,
+            "SYSTEM", // 또는 현재 사용자 ID
+            request.getPaymentKey(),
+            request.getAmount(),
+            "/api/payments/confirm"
+        );
+
         // 1. PaymentEvent 조회 및 검증
         PaymentEvent paymentEvent = paymentEventRepository.findByOrderId(request.getOrderId())
                 .orElseThrow(() -> new PaymentException("존재하지 않는 주문입니다."));
@@ -167,6 +180,16 @@ public class PaymentService {
         PaymentOrder paymentOrder = paymentOrderRepository.findByPaymentKey(request.getPaymentKey())
                 .orElseThrow(() -> new PaymentException("존재하지 않는 결제입니다."));
 
+        // 0. 트랜잭션 로깅 - 결제 취소 시도
+        transactionService.logTransactionAsync(
+            paymentOrder.getOrderId(),
+            TransactionType.PAYMENT_CANCEL,
+            "SYSTEM", // 또는 현재 사용자 ID
+            request.getPaymentKey(),
+            paymentOrder.getAmount(),
+            "/api/payments/cancel"
+        );
+
         // 2. 이미 취소된 결제인지 확인 (멱등성 보장)
         if (paymentOrder.getStatus() == PaymentStatus.CANCELED) {
             // 이미 취소된 경우 기존 취소 정보 반환
@@ -205,8 +228,8 @@ public class PaymentService {
         // 7. 비즈니스 로직 처리 (Post 금액 차감, Participant 삭제)
         handleCancellationBusinessLogic(paymentOrder, request.getCancelAmount());
 
-        // 8. 비동기로 PaymentLedger 취소 기록 생성
-        ledgerService.createCancellationLedgerAsync(paymentOrder, request.getCancelReason());
+        // 8. 비동기로 PaymentLedger 취소 상태로 업데이트
+        ledgerService.updateLedgerToCanceledAsync(paymentOrder, request.getCancelReason());
 
         return buildCancelResponse(paymentOrder, request.getCancelReason());
     }
@@ -303,9 +326,9 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public List<PaymentDetailResponse> getPaymentsByMember(Long memberId) {
-        List<PaymentOrder> orders = paymentOrderRepository.findByMemberIdOrderByCreatedAtDesc(memberId);
-        return orders.stream()
-                .map(this::convertToDetailResponse)
+        List<PaymentLedger> ledgers = ledgerService.getPaymentLedgersByMember(memberId);
+        return ledgers.stream()
+                .map(this::convertLedgerToDetailResponse)
                 .toList();
     }
 
@@ -374,6 +397,23 @@ public class PaymentService {
                 .status(order.getStatus())
                 .type(order.getType())
                 .createdAt(order.getCreatedAt())
+                .build();
+    }
+    
+    private PaymentDetailResponse convertLedgerToDetailResponse(PaymentLedger ledger) {
+        return PaymentDetailResponse.builder()
+                .id(ledger.getId())
+                .orderId(ledger.getOrderId())
+                .paymentKey(ledger.getPaymentKey())
+                .memberName(ledger.getMemberName())
+                .postTitle(ledger.getPostTitle())
+                .amount(ledger.getAmount())
+                .status(ledger.getStatus())
+                .type(ledger.getType())
+                .createdAt(ledger.getCreatedAt())
+                .originalCreatedAt(ledger.getOriginalCreatedAt())
+                .canceledAt(ledger.getCanceledAt())
+                .cancelReason(ledger.getCancelReason())
                 .build();
     }
     

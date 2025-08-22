@@ -20,4 +20,7 @@ public class PaymentDetailResponse {
     private PaymentStatus status;
     private PaymentType type;
     private LocalDateTime createdAt;
+    private LocalDateTime originalCreatedAt;  // 원래 결제일
+    private LocalDateTime canceledAt;         // 취소일 (취소된 경우)
+    private String cancelReason;              // 취소 사유
 }

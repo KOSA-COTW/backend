@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -33,6 +34,7 @@ public class LedgerService {
                     .type(paymentOrder.getType())
                     .memberName(paymentOrder.getMember().getName())
                     .postTitle(paymentOrder.getPost().getTitle())
+                    .originalCreatedAt(LocalDateTime.now())
                     .build();
 
             paymentLedgerRepository.save(ledger);
@@ -54,24 +56,17 @@ public class LedgerService {
 
     @Async
     @Transactional
-    public void createCancellationLedgerAsync(PaymentOrder paymentOrder, String cancelReason) {
+    public void updateLedgerToCanceledAsync(PaymentOrder paymentOrder, String cancelReason) {
         try {
-            PaymentLedger cancellationLedger = PaymentLedger.builder()
-                    .orderId(paymentOrder.getOrderId() + "_CANCEL")
-                    .paymentKey(paymentOrder.getPaymentKey())
-                    .memberId(paymentOrder.getMember().getId())
-                    .postId(paymentOrder.getPost().getId())
-                    .amount(-paymentOrder.getAmount()) // 음수로 기록하여 취소를 표시
-                    .status(PaymentStatus.CANCELED) // 취소 상태로 명시
-                    .type(paymentOrder.getType())
-                    .memberName(paymentOrder.getMember().getName())
-                    .postTitle(paymentOrder.getPost().getTitle() + " (취소: " + cancelReason + ")")
-                    .build();
-
-            paymentLedgerRepository.save(cancellationLedger);
-            log.info("Cancellation PaymentLedger created successfully for orderId: {}", paymentOrder.getOrderId());
+            PaymentLedger existingLedger = paymentLedgerRepository.findByOrderId(paymentOrder.getOrderId())
+                    .orElseThrow(() -> new RuntimeException("PaymentLedger not found for orderId: " + paymentOrder.getOrderId()));
+            
+            existingLedger.updateToCanceled(cancelReason, LocalDateTime.now());
+            paymentLedgerRepository.save(existingLedger);
+            
+            log.info("PaymentLedger updated to CANCELED for orderId: {}", paymentOrder.getOrderId());
         } catch (Exception e) {
-            log.error("Failed to create cancellation PaymentLedger for orderId: {}", paymentOrder.getOrderId(), e);
+            log.error("Failed to update PaymentLedger to CANCELED for orderId: {}", paymentOrder.getOrderId(), e);
         }
     }
 }
