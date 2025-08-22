@@ -58,7 +58,6 @@ class PaymentDataIntegrityTest {
                 .email("test@test.com")
                 .password("password")
                 .role(Role.USER)
-                .createdDate(LocalDateTime.now())
                 .build();
         testMember = memberRepository.save(testMember);
 

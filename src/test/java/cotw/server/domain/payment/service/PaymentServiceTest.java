@@ -7,11 +7,9 @@ import cotw.server.domain.board.repository.PostRepository;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
-import cotw.server.domain.payment.config.OrderIdGenerator;
 import cotw.server.domain.payment.config.TossPaymentConfig;
 import cotw.server.domain.payment.dto.request.PaymentConfirmRequest;
 import cotw.server.domain.payment.dto.request.PaymentCreateRequest;
-import cotw.server.domain.payment.dto.response.PaymentConfirmResponse;
 import cotw.server.domain.payment.dto.response.PaymentCreateResponse;
 import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
 import cotw.server.domain.payment.dto.response.TossPaymentResponse;
@@ -71,8 +69,6 @@ class PaymentServiceTest {
     @Mock
     private RestClient restClient;
 
-    @Mock
-    private OrderIdGenerator orderIdGenerator;
 
     private Member testMember;
     private Post testPost;
@@ -87,7 +83,6 @@ class PaymentServiceTest {
                 .email("test@test.com")
                 .password("password")
                 .role(Role.USER)
-                .createdDate(LocalDateTime.now())
                 .build();
 
         testPost = Post.builder()
@@ -138,7 +133,6 @@ class PaymentServiceTest {
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(testMember));
         given(postRepository.findById(1L)).willReturn(Optional.of(testPost));
-        given(orderIdGenerator.generateOrderId()).willReturn(generatedOrderId);
         given(paymentEventRepository.save(any(PaymentEvent.class))).willReturn(testPaymentEvent);
 
         // when
@@ -220,14 +214,9 @@ class PaymentServiceTest {
                 .when(spyPaymentService).callTossConfirmApiAsync(any());
 
         // when
-        PaymentConfirmResponse response = spyPaymentService.confirmPayment(request);
+        spyPaymentService.confirmPayment(request);
 
         // then
-        assertThat(response).isNotNull();
-        assertThat(response.getOrderId()).isEqualTo("ORDER_20240815_001");
-        assertThat(response.getPaymentKey()).isEqualTo("payment_key_123");
-        assertThat(response.getAmount()).isEqualTo(10000);
-        assertThat(response.getStatus()).isEqualTo(PaymentStatus.DONE);
 
         verify(paymentOrderRepository).save(any(PaymentOrder.class));
         verify(ledgerService).createPaymentLedgerAsync(any(PaymentOrder.class));

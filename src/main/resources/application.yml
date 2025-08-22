@@ -78,8 +78,6 @@ jwt:
 toss:
   secretKey: test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
   api-url: https://api.tosspayments.com
-  success-url : http://localhost:8080/api/payments/success
-  fail-url : http://localhost:5173/fail
 
 resilience4j:
   circuitbreaker:

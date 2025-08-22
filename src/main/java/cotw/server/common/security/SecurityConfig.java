@@ -92,15 +92,13 @@ public class SecurityConfig {
                 // 소프트 삭제 관련 요청
                 .requestMatchers(HttpMethod.POST, "/deactivate", "/recover").permitAll()
 
-                // 공개 조회
                 .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
-
-                // 생성 권한
-                .requestMatchers(HttpMethod.POST, "/api/posts").hasAnyRole("ADMIN", "ORGANIZATION")
+                .requestMatchers(HttpMethod.POST, "/api/posts").authenticated()
 
                 // 관리자 전용
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
 
                 .anyRequest().authenticated()
         );

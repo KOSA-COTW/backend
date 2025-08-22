@@ -79,6 +79,7 @@ public class ReissueController {
         String newAccess = jwtUtil.createToken("access", username, role, memberId, tokenVersion, 1000*60*10L);
         String newRefresh = jwtUtil.createToken("refresh", username, role, memberId, tokenVersion, 1000*60*60*24L);
 
+
         // Refresh token 저장. DB에 기존 Refresh token 삭제 후 새 Refresh token 저장
         refreshTokenRepository.deleteByRefreshToken(refresh);
         addRefreshEntity(username, newRefresh, 1000*60*60*24L);
