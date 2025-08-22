@@ -1,7 +1,7 @@
 package cotw.server.domain.member.controller;
 
 import cotw.server.common.jwt.CustomUserDetails;
-import cotw.server.domain.member.Dto.request.LoginRequestDTO;
+import cotw.server.domain.member.Dto.request.DeactivateRequestDTO;
 import cotw.server.domain.member.Dto.request.SignUpRequestDTO;
 import cotw.server.domain.member.Dto.response.ShowInfoResponseDTO;
 import cotw.server.domain.member.Dto.response.SignUpResponseDTO;
@@ -42,14 +42,14 @@ public class MemberController {
     // 본인 탈퇴
     @PostMapping("/deactivate")
     public ResponseEntity<Void> deactivate(@AuthenticationPrincipal CustomUserDetails me,
-                                           @RequestParam String password) {
-        memberService.deactivate(me.getMemberId(), Duration.ofDays(30), password); // 보관기간 정책
+                                           @RequestBody DeactivateRequestDTO requestDTO) {
+        memberService.deactivate(me.getMemberId(), Duration.ofDays(30), requestDTO.password()); // 보관기간 정책
         return ResponseEntity.ok().build();
     }
 
     // 보관기간 내 복구 - 이메일로 1회성 토큰 발송해서 복구하는 형태로 진행할 예정.
     @PostMapping("/recover")
-    public ResponseEntity<Void> recover(@RequestParam String email) {
+    public ResponseEntity<Void> recover(@RequestBody String email) {
         memberService.recover(email);
         return ResponseEntity.ok().build();
     }
