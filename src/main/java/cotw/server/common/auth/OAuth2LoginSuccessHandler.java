@@ -54,11 +54,18 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 .findByProviderAndProviderId(provider, providerId)
                 .orElseThrow(() -> new IllegalStateException("OAuth2 user upsert missing: " + provider + ":" + providerId));
 
-        String role = member.getRole().name();
 
-        // JWT 생성
-        String access  = jwtUtil.createToken("access",  member.getEmail(), role, member.getId(), 60 * 60 * 1000L);      // 1시간
-        String refresh = jwtUtil.createToken("refresh", member.getEmail(), role, member.getId(), 24 * 60 * 60 * 1000L); // 24시간
+        String role = member.getRole().name(); // 예: USER → ROLE_USER
+        long v = member.getTokenVersion();
+        long memberId = member.getId();
+
+        // 3) JWT 생성
+        String access  = jwtUtil.createToken("access",  member.getEmail(), role, memberId, v, 10 * 60 * 1000L);      // 10분
+        String refresh = jwtUtil.createToken("refresh", member.getEmail(), role, memberId, v, 24 * 60 * 60 * 1000L); // 24시간
+
+        // 중복된 토큰이 존재 할 시 기존 것을 삭제 후 저장
+        refreshTokenRepository.deleteByEmail(member.getEmail());
+
 
         // refresh 토큰 저장 (DB)
         saveRefreshToken(member.getEmail(), refresh, 24 * 60 * 60 * 1000L);
@@ -70,14 +77,18 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         // Refresh 토큰은 HttpOnly 쿠키로
         ResponseCookie refreshCookie = ResponseCookie.from("refresh", refresh)
                 .httpOnly(true)
-                .secure(true)
-                .sameSite("None")
+                .secure(false)               // 로컬 http 테스트면 false, https 환경에서 true
+                .sameSite("None")           // 프론트/백이 다른 오리진이면 필수
                 .path("/")
                 .maxAge(Duration.ofDays(1))
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-        // 프론트로 리다이렉트
+
+        // 6) 프론트로 리다이렉트
+        // - 헤더는 리다이렉트 후 JS에서 못 읽으므로, 짧게는 해시(#)에 access를 실어 전달 가능
+        // - 더 안전한 방식은 코드(1회용 key)를 발급하고 프론트가 /api/auth/exchange 로 교환하는 방식
+
         String redirectUrl = UriComponentsBuilder
                 .fromUriString(frontRedirectBase)
                 .fragment("access=" + access)

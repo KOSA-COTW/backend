@@ -7,6 +7,7 @@ import cotw.server.common.jwt.JwtFilter;
 import cotw.server.common.jwt.JwtUtil;
 import cotw.server.common.jwt.LoginFilter;
 import cotw.server.common.jwt.repository.RefreshTokenRepository;
+import jakarta.servlet.http.HttpServletResponse;
 import cotw.server.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -67,7 +68,7 @@ public class SecurityConfig {
         http.cors(cors -> cors.configurationSource(request -> {
             CorsConfiguration config = new CorsConfiguration();
             config.setAllowedOrigins(List.of("http://localhost:5173"));
-            config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+            config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
             config.setAllowedHeaders(List.of("*"));
             config.setExposedHeaders(List.of("Authorization"));
             config.setAllowCredentials(true); // refresh 토큰 쿠키 사용 시 필수
@@ -80,12 +81,16 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable);
 
+
         // 인가 정책
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/oauth2/**", "/login/oauth2/code/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/", "/auth/login", "/auth/signup", "/reissue").permitAll()
                 .requestMatchers("/api/payments/success", "/api/payments/confirm").permitAll()
+                .requestMatchers(HttpMethod.GET, "/info").permitAll()
+                // 소프트 삭제 관련 요청
+                .requestMatchers(HttpMethod.POST, "/deactivate", "/recover").permitAll()
 
                 .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
@@ -118,8 +123,18 @@ public class SecurityConfig {
                 // 3) 커스텀 로그아웃 필터: 로그아웃/리프레시토큰 제거 등
                 .addFilterBefore(new CustomLogoutFilter(jwtUtil, refreshTokenRepository), LogoutFilter.class);
 
-        // 세션 비활성화 (JWT 방식)
-        http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
+        //세션 설정
+        http
+                .sessionManagement((session) -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
+        http
+                // ✨ 인증 실패 시 401을 주고, 리다이렉트하지 않게
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint((req, res, ex) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
+                        .accessDeniedHandler((req, res, ex) -> res.sendError(HttpServletResponse.SC_FORBIDDEN))
+                );
 
         return http.build();
     }

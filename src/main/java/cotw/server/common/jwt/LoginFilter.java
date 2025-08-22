@@ -8,7 +8,9 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,6 +19,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import java.io.IOException;
 import java.util.Date;
@@ -39,24 +44,25 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         this.refreshTokenRepository = refreshTokenRepository;
     }
 
-
     @Override
     public Authentication attemptAuthentication(
             HttpServletRequest request,
             HttpServletResponse response
-    ) throws AuthenticationException {
+    ) throws AuthenticationException {      // json 타입을 파싱하여 사용.
 
         String contentType = request.getContentType();
         // application/json; charset=UTF-8 등도 허용
         if (contentType != null && contentType.toLowerCase().startsWith("application/json")) {
             try {
-                Map<String, String> credentials =
-                        objectMapper.readValue(request.getInputStream(), new TypeReference<>() {});
+                Map<String, String> credentials = new ObjectMapper().readValue(request.getInputStream(), new TypeReference<>() {});
                 String email = credentials.get("email");
                 String password = credentials.get("password");
 
+                log.debug("Login JSON branch, email={}", email);
+
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(email, password);
+
                 return authenticationManager.authenticate(authToken);
 
             } catch (IOException e) {
@@ -77,23 +83,37 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String username = authentication.getName();
 
 
-        // 토큰에 저장할 role은 접두사 제거해서 "ADMIN"/"USER" 형태로 표준화
+        //  토큰에 저장할 role은 접두사 제거해서 "ADMIN"/"USER" 형태로 표준화
+        // ex) "ROLE_USER" -> "USER" 로 변환해서 토큰에 담기
         String roleFromAuth = authentication.getAuthorities().iterator().next().getAuthority();
         String roleForToken = roleFromAuth.replaceFirst("^ROLE_", "");
 
-        // 토큰 생성 (ms)
-        String access  = jwtUtil.createToken("access",  username, roleForToken, null, 3_600_000L);   // 1시간
-        String refresh = jwtUtil.createToken("refresh", username, roleForToken, null, 86_400_000L);  // 24시간
+        //토큰 생성
+        String access = jwtUtil.createToken("access", username, roleForToken, 3600000L);
+        String refresh = jwtUtil.createToken("refresh", username, roleForToken, 86400000L);
 
-        // refresh token 저장(DB)
-        addRefreshToken(username, refresh, 86_400_000L);
+        // refresh token save
+        addRefreshToken(username, refresh, 1000*60*60*24L);
+
+        //응답 설정
+        response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + access);
+
+        // 프론트가 Authorization 헤더를 읽을 수 있게 노출(전역 CORS에서 하는 게 더 좋음)
+        response.addHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Authorization");
+
+        // refresh는 HttpOnly 쿠키로(크로스도메인 테스트면 SameSite=None; Secure 필수)
+        ResponseCookie refreshCookie = ResponseCookie.from("refresh", refresh)
+                .httpOnly(true)
+                .secure(false)      // 개발이 http라면 false 또는 프록시/https로 테스트
+                .path("/")
+                .sameSite("None")  // 크로스 도메인일 때 필수
+                .maxAge(Duration.ofDays(1))
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
         // 응답 설정
         response.setHeader("Authorization", "Bearer " + access);
         response.addHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Authorization");
-
-        // refresh 토큰은 쿠키로
-        response.addCookie(createCookie("refresh", refresh));
 
         response.setStatus(HttpStatus.OK.value());
     }
@@ -105,6 +125,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             AuthenticationException failed
     ) {
         log.warn("Login failed: {}", failed.getMessage());
+        log.warn("Login failed: {}", failed.getClass());
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -119,22 +140,27 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     }
 
     private void addRefreshToken(String email, String refreshToken, Long expiredMs) {
-        Date date = new Date(System.currentTimeMillis() + expiredMs);
+        RefreshToken checkToken = refreshTokenRepository.findByRefreshToken(refreshToken);
+//        if (checkToken == null) {
+            Date date = new Date(System.currentTimeMillis() + expiredMs);
 
-        RefreshToken refreshTokenEntity = new RefreshToken();
-        refreshTokenEntity.setEmail(email);
-        refreshTokenEntity.setRefreshToken(refreshToken);
-        refreshTokenEntity.setExpiryDate(date.toString());
+            RefreshToken refreshTokenEntity = new RefreshToken();
+            refreshTokenEntity.setEmail(email);
+            refreshTokenEntity.setRefreshToken(refreshToken);
+            refreshTokenEntity.setExpiryDate(date.toString());
 
-        refreshTokenRepository.save(refreshTokenEntity);
+            refreshTokenRepository.save(refreshTokenEntity);
+//        }
     }
 
     private Cookie createCookie(String key, String value) {
         Cookie cookie = new Cookie(key, value);
         cookie.setMaxAge(24 * 60 * 60); // 24시간
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setSecure(false);
+
+        cookie.setHttpOnly(true);       // JS에서 접근 불가
+        cookie.setPath("/");            // 전역
+        cookie.setSecure(false);        // 로컬 http 개발에선 false, 배포(HTTPS)에서는 true로!
+
         return cookie;
     }
 }
