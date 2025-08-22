@@ -21,21 +21,13 @@ public class TestConfig {
         return RestClient.builder().build();
     }
 
-    @Bean
-    @Primary
-    public OrderIdGenerator testOrderIdGenerator() {
-        return new OrderIdGenerator();
-    }
 
     @Bean
     @Primary
     public TossPaymentConfig testTossPaymentConfig() {
         TossPaymentConfig config = new TossPaymentConfig();
-        config.setClientKey("test_client_key");
         config.setSecretKey("test_secret_key");
         config.setApiUrl("https://api.tosspayments.com");
-        config.setSuccessUrl("http://localhost:5173/payment/success");
-        config.setFailUrl("http://localhost:5173/payment/fail");
         return config;
     }
 }

@@ -48,7 +48,6 @@ class LedgerServiceTest {
                 .email("test@test.com")
                 .password("password")
                 .role(Role.USER)
-                .createdDate(LocalDateTime.now())
                 .build();
 
         testPost = Post.builder()
