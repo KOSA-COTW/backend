@@ -5,8 +5,4 @@ public class PaymentIdempotencyException extends PaymentException {
     public PaymentIdempotencyException(String message) {
         super(message, "PAYMENT_IDEMPOTENCY_ERROR");
     }
-    
-    public PaymentIdempotencyException(String message, Throwable cause) {
-        super(message, cause, "PAYMENT_IDEMPOTENCY_ERROR");
-    }
 }

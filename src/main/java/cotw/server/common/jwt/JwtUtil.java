@@ -1,6 +1,8 @@
 package cotw.server.common.jwt;
 
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -23,33 +25,54 @@ public class JwtUtil {
 
     }
 
+    private Claims parseClaims(String token) {
+        try {
+            return Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)      // 서명 검증 + 만료 검사
+                    .getPayload();
+        } catch (ExpiredJwtException e) {
+            // 토큰이 만료되어도 Claims는 필요할 때가 있어 반환
+            return e.getClaims();
+        }
+    }
+
     public Boolean isExpired(String token) {
-        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().getExpiration().before(new Date());
+        return parseClaims(token).getExpiration().before(new Date());
     }
 
     public String getUsername(String token) {
-        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("username", String.class);
+        return parseClaims(token).get("username", String.class);
     }
 
     public String getRole(String token) {
-        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("role", String.class);
+        return parseClaims(token).get("role", String.class);
     }
 
     public String getCategory(String token) {
-        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("category", String.class);
+        return parseClaims(token).get("category", String.class);
     }
     
     public Long getMemberId(String token) {
-        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("memberId", Long.class);
+        return parseClaims(token).get("memberId", Long.class);
     }
 
-    public String createToken(String category, String username, String role, Long memberId, Long expirationTime) {
+    public long getTokenVersion(String token) {
+        Object v = parseClaims(token).get("tokenVersion");  // 여기서 사용
+        if (v == null) return 0L;                // 과거 토큰 호환
+        if (v instanceof Number n) return n.longValue();
+        try { return Long.parseLong(v.toString()); } catch (Exception e) { return 0L; }
+    }
+
+    public String createToken(String category, String username, String role, Long memberId, Long tokenVersion, Long expirationTime) {
 
         return Jwts.builder()
                 .claim("category", category)
                 .claim("username", username)  //유저 명
                 .claim("role", role)  //권한 정보
                 .claim("memberId", memberId)  //회원 ID
+                .claim("tokenVersion", tokenVersion)    // token의 버전
                 .setIssuedAt(new Date())    // 생성시간
                 .setExpiration(new Date(System.currentTimeMillis() + expirationTime))  // 만료시간
                 .signWith(secretKey)     // 서명 (HS512 알고리즘)
@@ -58,7 +81,7 @@ public class JwtUtil {
     
     // 기존 호환성을 위한 오버로드 메서드
     public String createToken(String category, String username, String role, Long expirationTime) {
-        return createToken(category, username, role, null, expirationTime);
+        return createToken(category, username, role, null, null, expirationTime);
     }
 
 

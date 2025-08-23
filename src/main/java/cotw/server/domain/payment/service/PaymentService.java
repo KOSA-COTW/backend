@@ -7,13 +7,11 @@ import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.board.repository.PostRepository;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.repository.MemberRepository;
-import cotw.server.domain.payment.config.OrderIdGenerator;
 import cotw.server.domain.payment.config.TossPaymentConfig;
 import cotw.server.domain.payment.dto.request.PaymentCancelRequest;
 import cotw.server.domain.payment.dto.request.PaymentConfirmRequest;
 import cotw.server.domain.payment.dto.request.PaymentCreateRequest;
 import cotw.server.domain.payment.dto.response.PaymentCancelResponse;
-import cotw.server.domain.payment.dto.response.PaymentConfirmResponse;
 import cotw.server.domain.payment.dto.response.PaymentCreateResponse;
 import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
 import cotw.server.domain.payment.dto.response.TossCancelResponse;
@@ -54,20 +52,21 @@ public class PaymentService {
     private final LedgerService ledgerService;
     private final ObjectMapper objectMapper;
     private final RestClient restClient;
-    private final OrderIdGenerator orderIdGenerator;
 
     public PaymentCreateResponse createPayment(PaymentCreateRequest request, Long memberId) {
+        // orderId 필수 검증
+        if (request.getOrderId() == null || request.getOrderId().trim().isEmpty()) {
+            throw new PaymentException("orderId는 필수입니다.");
+        }
+
         // 회원 및 게시글 검증
-        Member member = memberRepository.findById(memberId)
+        memberRepository.findById(memberId)
                 .orElseThrow(() -> new PaymentException("존재하지 않는 회원입니다."));
 
         Post post = postRepository.findById(request.getPostId())
                 .orElseThrow(() -> new PaymentException("존재하지 않는 게시글입니다."));
 
-        // orderId 사용 (프론트엔드에서 전달받은 것을 우선 사용, 없으면 생성)
-        String orderId = request.getOrderId() != null ? request.getOrderId() : orderIdGenerator.generateOrderId();
-        
-        System.out.println("Creating PaymentEvent with orderId: " + orderId);
+        String orderId = request.getOrderId();
 
         // PaymentEvent 생성 및 저장
         PaymentEvent paymentEvent = PaymentEvent.builder()
@@ -88,38 +87,20 @@ public class PaymentService {
                 .build();
     }
 
-    public PaymentConfirmResponse confirmPayment(PaymentConfirmRequest request) {
+    public void confirmPayment(PaymentConfirmRequest request) {
         // 1. PaymentEvent 조회 및 검증
-        System.out.println("Looking for PaymentEvent with orderId: " + request.getOrderId());
-        
-        // DB에 있는 모든 PaymentEvent 조회해서 로깅
-        List<PaymentEvent> allEvents = paymentEventRepository.findAll();
-        System.out.println("All PaymentEvents in DB:");
-        for (PaymentEvent event : allEvents) {
-            System.out.println("  - OrderId: " + event.getOrderId() + ", Status: " + event.getStatus());
-        }
-        
         PaymentEvent paymentEvent = paymentEventRepository.findByOrderId(request.getOrderId())
                 .orElseThrow(() -> new PaymentException("존재하지 않는 주문입니다."));
 
         // 2. 멱등성 검증 - 이미 처리된 결제인지 확인
         if (paymentEvent.isAlreadyProcessed()) {
-            System.out.println("Payment already processed for orderId: " + request.getOrderId());
-            // 이미 처리된 경우 기존 PaymentOrder 반환
             PaymentOrder existingOrder = paymentOrderRepository.findByOrderId(request.getOrderId())
                     .orElseThrow(() -> new PaymentException("결제가 완료되었지만 주문 정보를 찾을 수 없습니다."));
             
-            Post post = postRepository.findById(existingOrder.getPost().getId())
+            postRepository.findById(existingOrder.getPost().getId())
                     .orElseThrow(() -> new PaymentException("존재하지 않는 게시글입니다."));
             
-            return PaymentConfirmResponse.builder()
-                    .orderId(existingOrder.getOrderId())
-                    .paymentKey(existingOrder.getPaymentKey())
-                    .status(existingOrder.getStatus())
-                    .type(existingOrder.getType())
-                    .amount(existingOrder.getAmount())
-                    .orderName(post.getTitle())
-                    .build();
+            return;
         }
 
         // 3. 금액 검증
@@ -172,7 +153,6 @@ public class PaymentService {
         // 8. Post의 currentAmount 업데이트 (기부 금액 추가)
         post.addDonationAmount(request.getAmount());
         postRepository.save(post);
-        System.out.println("Post currentAmount updated: " + post.getCurrentAmount());
 
         // 9. Participant 추가 (기부자 정보 저장)
         createParticipant(member, post, request.getAmount());
@@ -180,14 +160,6 @@ public class PaymentService {
         // 10. 비동기로 PaymentLedger 생성
         ledgerService.createPaymentLedgerAsync(paymentOrder);
 
-        return PaymentConfirmResponse.builder()
-                .orderId(paymentOrder.getOrderId())
-                .paymentKey(paymentOrder.getPaymentKey())
-                .status(paymentOrder.getStatus())
-                .type(paymentOrder.getType())
-                .amount(paymentOrder.getAmount())
-                .orderName(post.getTitle())
-                .build();
     }
 
     public PaymentCancelResponse cancelPayment(PaymentCancelRequest request) {
@@ -195,15 +167,15 @@ public class PaymentService {
         PaymentOrder paymentOrder = paymentOrderRepository.findByPaymentKey(request.getPaymentKey())
                 .orElseThrow(() -> new PaymentException("존재하지 않는 결제입니다."));
 
-        // 2. 취소 가능 상태 검증
-        if (paymentOrder.getStatus() != PaymentStatus.DONE) {
-            throw new PaymentException("취소할 수 없는 결제 상태입니다. 현재 상태: " + paymentOrder.getStatus());
-        }
-
-        // 3. 이미 취소된 결제인지 확인 (멱등성 보장)
+        // 2. 이미 취소된 결제인지 확인 (멱등성 보장)
         if (paymentOrder.getStatus() == PaymentStatus.CANCELED) {
             // 이미 취소된 경우 기존 취소 정보 반환
             return buildCancelResponse(paymentOrder, request.getCancelReason());
+        }
+
+        // 3. 취소 가능 상태 검증
+        if (paymentOrder.getStatus() != PaymentStatus.DONE) {
+            throw new PaymentException("취소할 수 없는 결제 상태입니다. 현재 상태: " + paymentOrder.getStatus());
         }
 
         // 4. 토스 결제 취소 API 호출
@@ -252,30 +224,18 @@ public class PaymentService {
                 .encodeToString((tossConfig.getSecretKey() + ":").getBytes());
 
         try {
-            System.out.println("Calling Toss Cancel API for paymentKey: " + request.getPaymentKey());
-            
             // 취소 요청 body 구성
             String requestBody = createCancelRequestBody(request);
             
-            // 일단 String으로 응답을 받아서 로깅
-            String responseBody = restClient.post()
+            return restClient.post()
                     .uri(tossConfig.getApiUrl() + "/v1/payments/" + request.getPaymentKey() + "/cancel")
                     .header(HttpHeaders.AUTHORIZATION, "Basic " + encodedSecretKey)
                     .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                     .body(requestBody)
                     .retrieve()
-                    .body(String.class);
-            
-            System.out.println("=== Toss Cancel API Response ===");
-            System.out.println(responseBody);
-            System.out.println("================================");
-            
-            // JSON을 TossCancelResponse로 파싱
-            return objectMapper.readValue(responseBody, TossCancelResponse.class);
+                    .body(TossCancelResponse.class);
             
         } catch (Exception e) {
-            System.err.println("Toss Cancel API call failed for paymentKey: " + request.getPaymentKey() + ", Error: " + e.getMessage());
-            e.printStackTrace();
             throw new PaymentException("토스 결제 취소 API 호출 실패: " + e.getMessage());
         }
     }
@@ -316,17 +276,12 @@ public class PaymentService {
         if (cancelAmount == null || cancelAmount.equals(paymentOrder.getAmount())) {
             removeParticipant(member, post);
         }
-        
-        System.out.println("Cancellation processed - Amount: " + actualCancelAmount + 
-                          ", Post currentAmount: " + post.getCurrentAmount());
     }
 
     private void removeParticipant(Member member, Post post) {
         // Participant 삭제 로직
         post.getParticipants().removeIf(participant -> 
             participant.getMember().getId().equals(member.getId()));
-        
-        System.out.println("Participant removed: " + member.getName() + " from " + post.getTitle());
     }
 
     private PaymentCancelResponse buildCancelResponse(PaymentOrder paymentOrder, String cancelReason) {
@@ -383,7 +338,6 @@ public class PaymentService {
                 throw new PaymentIdempotencyException("이미 처리된 결제입니다. 중복 처리를 방지합니다.");
             }
 
-            System.out.println("Calling Toss API for orderId: " + request.getOrderId());
             return restClient.post()
                     .uri(tossConfig.getApiUrl() + "/v1/payments/confirm")
                     .header(HttpHeaders.AUTHORIZATION, "Basic " + encodedSecretKey)
@@ -433,7 +387,5 @@ public class PaymentService {
         
         // Post에 참여자 추가 (cascade로 자동 저장됨)
         post.addParticipant(participant);
-        
-        System.out.println("Participant added: " + member.getName() + " donated " + amount + " to " + post.getTitle());
     }
 }

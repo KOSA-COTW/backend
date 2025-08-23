@@ -3,6 +3,7 @@ package cotw.server.common.auth;
 import cotw.server.common.auth.DTO.GoogleUserInfo;
 import cotw.server.common.auth.DTO.KakaoUserInfo;
 import cotw.server.common.auth.DTO.NaverUserInfo;
+import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.ProviderType;
 import cotw.server.domain.member.repository.MemberRepository;
@@ -13,6 +14,7 @@ import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserServ
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
@@ -49,6 +51,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         ProviderType provider = toProviderType(registrationId);
         String providerId = info.id();    // 구글=sub, 카카오=id, 네이버=response.id 로 표준화된 값
         String email = info.email();      // (없을 수도 있음)
+        String normalizedEmail = email == null ? null : email.trim().toLowerCase();
 
         // 2) (provider, providerId)로 먼저 조회 → 있으면 정보만 갱신
         Member member = memberRepository.findByProviderAndProviderId(provider, providerId)
@@ -79,6 +82,15 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
                     );
                 });
 
+        // 상태 검사 (소프트 삭제/정지 차단)
+        if (member.getStatus() != AccountStatus.ACTIVE) {
+            throw new OAuth2AuthenticationException(new OAuth2Error("account_inactive"),
+                    "Account inactive or deleted");
+        }
+
+        // 필요 시 프로필 동기화
+        member.update(getName(oAuth2User), normalizedEmail);
+        memberRepository.save(member);
 
         // 3) 권한 및 Principal 반환
         Collection<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("USER"));
@@ -100,4 +112,13 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
     }
 
 
+    private String getName(OAuth2User u) {
+        // provider별 name/profile_nickname 등 적절히
+        String name = u.getAttribute("name");
+        if (name == null) {
+            Map<?,?> profile = u.getAttribute("properties"); // kakao 등
+            if (profile != null) name = String.valueOf(profile.get("nickname"));
+        }
+        return name;
+    }
 }
