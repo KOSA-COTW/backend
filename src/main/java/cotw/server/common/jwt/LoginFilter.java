@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cotw.server.common.jwt.entity.RefreshToken;
 import cotw.server.common.jwt.repository.RefreshTokenRepository;
+import cotw.server.domain.member.entity.AccountStatus;
+import cotw.server.domain.member.entity.Member;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,9 +16,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationServiceException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
@@ -81,13 +81,18 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             Authentication authentication
     ) {
         // 유저 정보
-        String username = authentication.getName();
 
-        // 권한에서 첫 번째를 사용(여러 개면 필요에 맞게 확장)
-        String authority = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)     // "ROLE_ADMIN"
-                .findFirst()
-                .orElse("ROLE_USER");
+        CustomUserDetails cud = (CustomUserDetails) authentication.getPrincipal();
+        Member m = cud.getMember();
+
+        if (m.getStatus() != AccountStatus.ACTIVE) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return; // 안전장치
+        }
+
+        String username = m.getEmail();
+        long v = m.getTokenVersion();
+
 
         //  토큰에 저장할 role은 접두사 제거해서 "ADMIN"/"USER" 형태로 표준화
         // ex) "ROLE_USER" -> "USER" 로 변환해서 토큰에 담기
@@ -95,8 +100,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String roleForToken = roleFromAuth.replaceFirst("^ROLE_", "");
 
         //토큰 생성
-        String access = jwtUtil.createToken("access", username, roleForToken, 3600000L);
-        String refresh = jwtUtil.createToken("refresh", username, roleForToken, 86400000L);
+        String access = jwtUtil.createToken("access", username, roleForToken, m.getId(), v,3600000L);
+        String refresh = jwtUtil.createToken("refresh", username, roleForToken, m.getId(), v, 86400000L);
 
         // refresh token save
         addRefreshToken(username, refresh, 1000*60*60*24L);
@@ -133,24 +138,39 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             HttpServletResponse response,
             AuthenticationException failed
     ) {
+        String code = "AUTH_FAILED";
+        int status = HttpServletResponse.SC_UNAUTHORIZED;
+
+        if (failed instanceof LockedException) {
+            code = "ACCOUNT_SUSPENDED"; status = 423; // Locked
+        } else if (failed instanceof DisabledException) {
+            code = "ACCOUNT_DELETED"; status = 403;
+        } else if (failed instanceof AccountExpiredException) {
+            code = "ACCOUNT_PENDING"; status = 409;
+        } else if (failed instanceof CredentialsExpiredException) {
+            code = "PASSWORD_EXPIRED"; status = 401;
+        } else if (failed instanceof BadCredentialsException) {
+            code = "BAD_CREDENTIALS"; status = 401;
+        }
+
+
         log.warn("Login failed: {}", failed.getMessage());
         log.warn("Login failed: {}", failed.getClass());
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setStatus(status);
 
         try {
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("message", "Invalid credentials");
-            objectMapper.writeValue(response.getWriter(), errorResponse);
+            objectMapper.writeValue(response.getWriter(), Map.of(
+                    "error", code,
+                    "message", code   // 필요 시 i18n으로 치환
+            ));
         } catch (IOException e) {
             log.error("Error writing error response", e);
         }
     }
 
     private void addRefreshToken(String email, String refreshToken, Long expiredMs) {
-        RefreshToken checkToken = refreshTokenRepository.findByRefreshToken(refreshToken);
-//        if (checkToken == null) {
             Date date = new Date(System.currentTimeMillis() + expiredMs);
 
             RefreshToken refreshTokenEntity = new RefreshToken();
@@ -159,7 +179,6 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             refreshTokenEntity.setExpiryDate(date.toString());
 
             refreshTokenRepository.save(refreshTokenEntity);
-//        }
     }
 
     private Cookie createCookie(String key, String value) {

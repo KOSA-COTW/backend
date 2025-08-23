@@ -2,10 +2,7 @@ package cotw.server.common.security;
 
 import cotw.server.common.auth.CustomOAuth2UserService;
 import cotw.server.common.auth.OAuth2LoginSuccessHandler;
-import cotw.server.common.jwt.CustomLogoutFilter;
-import cotw.server.common.jwt.JwtFilter;
-import cotw.server.common.jwt.JwtUtil;
-import cotw.server.common.jwt.LoginFilter;
+import cotw.server.common.jwt.*;
 import cotw.server.common.jwt.repository.RefreshTokenRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import cotw.server.domain.member.repository.MemberRepository;
@@ -14,12 +11,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
@@ -32,16 +32,28 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final AuthenticationConfiguration authenticationConfiguration;
     private final JwtUtil jwtUtil;
     private final RefreshTokenRepository refreshTokenRepository;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
     private final MemberRepository memberRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final UserDetailsService userDetailsService;
+    private final MemberStatusPostChecker memberStatusPostChecker;
 
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
+
+        // 계정수집 방지: 비번 검증 "전" 상태 체크는 끈다(또는 no-op로 대체)
+        provider.setPreAuthenticationChecks(user -> {});
+
+        // 비번 검증 "후" 상태로 분기
+        provider.setPostAuthenticationChecks(memberStatusPostChecker);
+
+        return new ProviderManager(provider);
     }
 
     @Bean
@@ -127,7 +139,7 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         http
-                // ✨ 인증 실패 시 401을 주고, 리다이렉트하지 않게
+                // 인증 실패 시 401을 주고, 리다이렉트하지 않게
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, res, ex) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
                         .accessDeniedHandler((req, res, ex) -> res.sendError(HttpServletResponse.SC_FORBIDDEN))

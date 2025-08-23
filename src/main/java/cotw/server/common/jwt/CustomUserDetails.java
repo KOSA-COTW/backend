@@ -1,6 +1,8 @@
 package cotw.server.common.jwt;
 
+import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
+import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -10,6 +12,7 @@ import java.util.*;
 
 public class CustomUserDetails implements UserDetails, OAuth2User {
 
+    @Getter
     private final Member member;
     private final Map<String, Object> attributes; // OAuth2 attributes (일반 로그인은 빈 맵)
 
@@ -131,9 +134,9 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
     @Override public String getPassword()  { return member.getPassword(); }
     @Override public String getUsername()  { return member.getEmail(); }
     @Override public boolean isAccountNonExpired()     { return true; }
-    @Override public boolean isAccountNonLocked()      { return true; }
+    @Override public boolean isAccountNonLocked()      { return member.getStatus() != AccountStatus.SUSPENDED; }
     @Override public boolean isCredentialsNonExpired() { return true; }
-    @Override public boolean isEnabled()               { return true; }
+    @Override public boolean isEnabled()               { return member.getStatus() == AccountStatus.ACTIVE; }
 
     @Override
     public String getName() {
