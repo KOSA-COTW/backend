@@ -13,7 +13,6 @@ import cotw.server.domain.payment.dto.request.PaymentConfirmRequest;
 import cotw.server.domain.payment.dto.request.PaymentCreateRequest;
 import cotw.server.domain.payment.dto.response.PaymentCancelResponse;
 import cotw.server.domain.payment.dto.response.PaymentCreateResponse;
-import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
 import cotw.server.domain.payment.dto.response.TossCancelResponse;
 import cotw.server.domain.payment.dto.response.TossPaymentResponse;
 import cotw.server.domain.payment.entity.PaymentEvent;
@@ -324,21 +323,6 @@ public class PaymentService {
                 .build();
     }
 
-    @Transactional(readOnly = true)
-    public List<PaymentDetailResponse> getPaymentsByMember(Long memberId) {
-        List<PaymentLedger> ledgers = ledgerService.getPaymentLedgersByMember(memberId);
-        return ledgers.stream()
-                .map(this::convertLedgerToDetailResponse)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<PaymentDetailResponse> getPaymentsByPost(Long postId) {
-        List<PaymentOrder> orders = paymentOrderRepository.findByPostIdOrderByCreatedAtDesc(postId);
-        return orders.stream()
-                .map(this::convertToDetailResponse)
-                .toList();
-    }
 
     @CircuitBreaker(name = "paymentService", fallbackMethod = "fallbackTossConfirmApi")
     @Retry(name = "paymentService")
@@ -386,36 +370,6 @@ public class PaymentService {
         }
     }
 
-    private PaymentDetailResponse convertToDetailResponse(PaymentOrder order) {
-        return PaymentDetailResponse.builder()
-                .id(order.getId())
-                .orderId(order.getOrderId())
-                .paymentKey(order.getPaymentKey())
-                .memberName(order.getMember().getName())
-                .postTitle(order.getPost().getTitle())
-                .amount(order.getAmount())
-                .status(order.getStatus())
-                .type(order.getType())
-                .createdAt(order.getCreatedAt())
-                .build();
-    }
-    
-    private PaymentDetailResponse convertLedgerToDetailResponse(PaymentLedger ledger) {
-        return PaymentDetailResponse.builder()
-                .id(ledger.getId())
-                .orderId(ledger.getOrderId())
-                .paymentKey(ledger.getPaymentKey())
-                .memberName(ledger.getMemberName())
-                .postTitle(ledger.getPostTitle())
-                .amount(ledger.getAmount())
-                .status(ledger.getStatus())
-                .type(ledger.getType())
-                .createdAt(ledger.getCreatedAt())
-                .originalCreatedAt(ledger.getOriginalCreatedAt())
-                .canceledAt(ledger.getCanceledAt())
-                .cancelReason(ledger.getCancelReason())
-                .build();
-    }
     
     private void createParticipant(Member member, Post post, Integer amount) {
         // 기부 참여자 정보 생성

@@ -8,6 +8,8 @@ import cotw.server.domain.payment.dto.response.PaymentCancelResponse;
 import cotw.server.domain.payment.dto.response.PaymentCreateResponse;
 import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
 import cotw.server.domain.payment.service.PaymentService;
+import cotw.server.domain.payment.service.LedgerService;
+import cotw.server.domain.payment.entity.PaymentLedger;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +22,7 @@ import java.util.List;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final LedgerService ledgerService;
 
     @PostMapping
     public ResponseEntity<PaymentCreateResponse> createPayment(@RequestBody PaymentCreateRequest request) {
@@ -53,21 +56,21 @@ public class PaymentController {
     }
 
     @GetMapping("/member/{memberId}")
-    public ResponseEntity<List<PaymentDetailResponse>> getPaymentsByMember(@PathVariable Long memberId) {
-        List<PaymentDetailResponse> responses = paymentService.getPaymentsByMember(memberId);
+    public ResponseEntity<List<PaymentLedger>> getPaymentsByMember(@PathVariable Long memberId) {
+        List<PaymentLedger> responses = ledgerService.getPaymentLedgersByMember(memberId);
         return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/post/{postId}")
-    public ResponseEntity<List<PaymentDetailResponse>> getPaymentsByPost(@PathVariable Long postId) {
-        List<PaymentDetailResponse> responses = paymentService.getPaymentsByPost(postId);
+    public ResponseEntity<List<PaymentLedger>> getPaymentsByPost(@PathVariable Long postId) {
+        List<PaymentLedger> responses = ledgerService.getPaymentLedgersByPost(postId);
         return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/my")
-    public ResponseEntity<List<PaymentDetailResponse>> getMyPayments() {
+    public ResponseEntity<List<PaymentLedger>> getMyPayments() {
         Long memberId = SecurityUtil.getCurrentMemberId();
-        List<PaymentDetailResponse> responses = paymentService.getPaymentsByMember(memberId);
+        List<PaymentLedger> responses = ledgerService.getPaymentLedgersByMember(memberId);
         return ResponseEntity.ok(responses);
     }
 
