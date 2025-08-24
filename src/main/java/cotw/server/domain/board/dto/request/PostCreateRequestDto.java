@@ -6,6 +6,7 @@ import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.member.entity.Member;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,6 +33,7 @@ public class PostCreateRequestDto {
     private int amount;
 
     // 이미지 경로 리스트
+    @NotEmpty(message = "이미지는 최소 1개 이상 등록해야 합니다.")
     private List<String> imageUrls;
 
     @NotNull(message = "기부 마감일은 필수입니다.")
