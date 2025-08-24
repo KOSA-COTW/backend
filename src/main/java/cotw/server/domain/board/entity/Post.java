@@ -121,4 +121,9 @@ public class Post extends BaseEntity {
         this.participants.add(participant);
 
     }
+
+    // 기존 이미지 전체 제거
+    public void clearImages() {
+        this.images.clear();
+    }
 }
