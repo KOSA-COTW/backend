@@ -109,6 +109,11 @@ public class SecurityConfig {
                 // 생성 권한
                 .requestMatchers(HttpMethod.POST, "/api/posts").hasAnyRole("ADMIN", "ORGANIZATION")
 
+                .requestMatchers(HttpMethod.GET, "/api/notices/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/notices/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/notices/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/notices/**").hasRole("ADMIN")
+
                 // 관리자 전용
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
 

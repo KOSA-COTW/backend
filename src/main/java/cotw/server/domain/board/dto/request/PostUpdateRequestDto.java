@@ -4,6 +4,8 @@ import cotw.server.domain.board.entity.Category;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Getter
 @NoArgsConstructor
 public class PostUpdateRequestDto {
@@ -11,4 +13,5 @@ public class PostUpdateRequestDto {
     private String content;
     private Category category;
     private int amount;
+    private List<String> imageUrls;
 }
