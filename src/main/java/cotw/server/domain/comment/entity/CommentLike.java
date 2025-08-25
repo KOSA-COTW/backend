@@ -1,10 +1,10 @@
 package cotw.server.domain.comment.entity;
 
+import cotw.server.common.BaseEntity;   // ✅ BaseEntity import
 import cotw.server.domain.member.entity.Member;
+import cotw.server.domain.board.entity.Comment;
 import jakarta.persistence.*;
 import lombok.*;
-import cotw.server.domain.board.entity.Comment;
-import java.time.LocalDateTime;
 
 import static jakarta.persistence.GenerationType.IDENTITY;
 
@@ -19,23 +19,18 @@ import static jakarta.persistence.GenerationType.IDENTITY;
 @Getter @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor @Builder
-public class CommentLike {
+public class CommentLike extends BaseEntity {   // ✅ 공통 엔티티 상속
 
     @Id @GeneratedValue(strategy = IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "comment_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "comment_id", nullable = false)
     private Comment comment;
 
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "member_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
 
-    @PrePersist
-    public void prePersist() {
-        if (this.createdAt == null) this.createdAt = LocalDateTime.now();
-    }
 }
-
