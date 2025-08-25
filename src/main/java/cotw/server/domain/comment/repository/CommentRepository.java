@@ -95,4 +95,195 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     """)
     int decrementLikeCount(@Param("commentId") Long commentId);
 
+
+    // ====== 관리자 전용 조회 ======
+// 상태 정의
+// PENDING : 숨김 & 삭제 아님 & 검토기한 >= now
+// EXPIRED : 숨김 & 삭제 아님 & 검토기한  < now
+// HIDDEN  : 숨김(삭제 포함) 전체
+// ALL     : 신고 관련 모든 것 (reportCount>0 or 숨김 or 검토기한 설정됨)
+
+    @Query(value = """
+    select c from Comment c
+    where c.isPublic = false
+      and c.deletedAt is null
+      and (c.moderationDueAt is not null and c.moderationDueAt >= CURRENT_TIMESTAMP)
+      and (:reason is null or exists (
+            select 1 from CommentReport r
+             where r.comment.id = c.id and r.reason = :reason
+      ))
+      and (:from is null or exists (
+            select 1 from CommentReport r2
+             where r2.comment.id = c.id and r2.createdAt >= :from
+      ))
+      and (:to is null or exists (
+            select 1 from CommentReport r3
+             where r3.comment.id = c.id and r3.createdAt < :to
+      ))
+    order by c.moderationDueAt asc, c.id asc
+""",
+            countQuery = """
+    select count(c) from Comment c
+    where c.isPublic = false
+      and c.deletedAt is null
+      and (c.moderationDueAt is not null and c.moderationDueAt >= CURRENT_TIMESTAMP)
+      and (:reason is null or exists (
+            select 1 from CommentReport r
+             where r.comment.id = c.id and r.reason = :reason
+      ))
+      and (:from is null or exists (
+            select 1 from CommentReport r2
+             where r2.comment.id = c.id and r2.createdAt >= :from
+      ))
+      and (:to is null or exists (
+            select 1 from CommentReport r3
+             where r3.comment.id = c.id and r3.createdAt < :to
+      ))
+""")
+    Page<Comment> findAdminPending(
+            @Param("reason") cotw.server.domain.comment.entity.ReportReason reason,
+            @Param("from") java.time.LocalDateTime from,
+            @Param("to") java.time.LocalDateTime to,
+            Pageable pageable);
+
+    @Query(value = """
+    select c from Comment c
+    where c.isPublic = false
+      and c.deletedAt is null
+      and (c.moderationDueAt is not null and c.moderationDueAt < CURRENT_TIMESTAMP)
+      and (:reason is null or exists (
+            select 1 from CommentReport r
+             where r.comment.id = c.id and r.reason = :reason
+      ))
+      and (:from is null or exists (
+            select 1 from CommentReport r2
+             where r2.comment.id = c.id and r2.createdAt >= :from
+      ))
+      and (:to is null or exists (
+            select 1 from CommentReport r3
+             where r3.comment.id = c.id and r3.createdAt < :to
+      ))
+    order by c.moderationDueAt asc, c.id asc
+""",
+            countQuery = """
+    select count(c) from Comment c
+    where c.isPublic = false
+      and c.deletedAt is null
+      and (c.moderationDueAt is not null and c.moderationDueAt < CURRENT_TIMESTAMP)
+      and (:reason is null or exists (
+            select 1 from CommentReport r
+             where r.comment.id = c.id and r.reason = :reason
+      ))
+      and (:from is null or exists (
+            select 1 from CommentReport r2
+             where r2.comment.id = c.id and r2.createdAt >= :from
+      ))
+      and (:to is null or exists (
+            select 1 from CommentReport r3
+             where r3.comment.id = c.id and r3.createdAt < :to
+      ))
+""")
+    Page<Comment> findAdminExpired(
+            @Param("reason") cotw.server.domain.comment.entity.ReportReason reason,
+            @Param("from") java.time.LocalDateTime from,
+            @Param("to") java.time.LocalDateTime to,
+            Pageable pageable);
+
+    @Query(value = """
+    select c from Comment c
+    where c.isPublic = false
+      and (:reason is null or exists (
+            select 1 from CommentReport r
+             where r.comment.id = c.id and r.reason = :reason
+      ))
+      and (:from is null or exists (
+            select 1 from CommentReport r2
+             where r2.comment.id = c.id and r2.createdAt >= :from
+      ))
+      and (:to is null or exists (
+            select 1 from CommentReport r3
+             where r3.comment.id = c.id and r3.createdAt < :to
+      ))
+    order by c.updatedAt desc, c.id desc
+""",
+            countQuery = """
+    select count(c) from Comment c
+    where c.isPublic = false
+      and (:reason is null or exists (
+            select 1 from CommentReport r
+             where r.comment.id = c.id and r.reason = :reason
+      ))
+      and (:from is null or exists (
+            select 1 from CommentReport r2
+             where r2.comment.id = c.id and r2.createdAt >= :from
+      ))
+      and (:to is null or exists (
+            select 1 from CommentReport r3
+             where r3.comment.id = c.id and r3.createdAt < :to
+      ))
+""")
+    Page<Comment> findAdminHidden(
+            @Param("reason") cotw.server.domain.comment.entity.ReportReason reason,
+            @Param("from") java.time.LocalDateTime from,
+            @Param("to") java.time.LocalDateTime to,
+            Pageable pageable);
+
+    @Query(value = """
+    select c from Comment c
+    where (c.reportCount > 0 or c.isPublic = false or c.moderationDueAt is not null)
+      and (:reason is null or exists (
+            select 1 from CommentReport r
+             where r.comment.id = c.id and r.reason = :reason
+      ))
+      and (:from is null or exists (
+            select 1 from CommentReport r2
+             where r2.comment.id = c.id and r2.createdAt >= :from
+      ))
+      and (:to is null or exists (
+            select 1 from CommentReport r3
+             where r3.comment.id = c.id and r3.createdAt < :to
+      ))
+    order by c.updatedAt desc, c.id desc
+""",
+            countQuery = """
+    select count(c) from Comment c
+    where (c.reportCount > 0 or c.isPublic = false or c.moderationDueAt is not null)
+      and (:reason is null or exists (
+            select 1 from CommentReport r
+             where r.comment.id = c.id and r.reason = :reason
+      ))
+      and (:from is null or exists (
+            select 1 from CommentReport r2
+             where r2.comment.id = c.id and r2.createdAt >= :from
+      ))
+      and (:to is null or exists (
+            select 1 from CommentReport r3
+             where r3.comment.id = c.id and r3.createdAt < :to
+      ))
+""")
+    Page<Comment> findAdminAll(
+            @Param("reason") cotw.server.domain.comment.entity.ReportReason reason,
+            @Param("from") java.time.LocalDateTime from,
+            @Param("to") java.time.LocalDateTime to,
+            Pageable pageable);
+
+    // ====== 대시보드 카운트 ======
+    @Query("""
+    select count(c) from Comment c
+     where c.isPublic=false
+       and c.deletedAt is null
+       and c.moderationDueAt is not null
+       and c.moderationDueAt >= CURRENT_TIMESTAMP
+""")
+    long countAdminPending();
+
+    @Query("""
+    select count(c) from Comment c
+     where c.isPublic=false
+       and c.deletedAt is null
+       and c.moderationDueAt is not null
+       and c.moderationDueAt < CURRENT_TIMESTAMP
+""")
+    long countAdminExpired();
+
 }
