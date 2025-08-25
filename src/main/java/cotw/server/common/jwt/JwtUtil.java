@@ -21,7 +21,6 @@ public class JwtUtil {
 
         this.secretKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8),
                 Jwts.SIG.HS512.key().build().getAlgorithm());
-        System.out.println("Secret key length: " + secret.length());
 
     }
 

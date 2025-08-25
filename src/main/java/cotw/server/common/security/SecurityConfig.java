@@ -56,10 +56,6 @@ public class SecurityConfig {
         return new ProviderManager(provider);
     }
 
-    @Bean
-    public BCryptPasswordEncoder bCryptPasswordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
 
     /** 커스텀 로그인 필터 (ID/PW → JWT 발급) */
     @Bean
@@ -103,6 +99,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/info").permitAll()
                 // 소프트 삭제 관련 요청
                 .requestMatchers(HttpMethod.POST, "/deactivate", "/recover").permitAll()
+
+                .requestMatchers(HttpMethod.PATCH, "/editpass", "/changeimage").permitAll()
 
                 // 공개 조회
                 .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
