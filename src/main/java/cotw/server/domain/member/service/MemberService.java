@@ -10,8 +10,8 @@ import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
-import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
-import cotw.server.domain.payment.service.PaymentService;
+import cotw.server.domain.payment.dto.response.PaymentHistoryResponse;
+import cotw.server.domain.payment.service.LedgerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,7 +32,7 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final PaymentService paymentService;
+    private final LedgerService ledgerService;
 
 
     public SignUpResponseDTO signUpMember(SignUpRequestDTO signUpRequestDTO) {
@@ -66,9 +66,9 @@ public class MemberService {
             throw new AccessDeniedException("Member not found");
         }
 
-        List<PaymentDetailResponse> payments = paymentService.getPaymentsByMember(member.getId());
+        List<PaymentHistoryResponse> payments = ledgerService.getPaymentHistoryByMember(member.getId());
         int oneTimeCount = payments.size();
-        Long totalDonation = payments.stream().mapToLong(PaymentDetailResponse::getAmount).sum();
+        Long totalDonation = payments.stream().mapToLong(PaymentHistoryResponse::getAmount).sum();
 
         ShowInfoResponseDTO responseDTO = ShowInfoResponseDTO.from(member, oneTimeCount, totalDonation);
         return responseDTO;
