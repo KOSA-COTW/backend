@@ -11,9 +11,6 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "toss")
 public class TossPaymentConfig {
 
-    private String clientKey;
     private String secretKey;
     private String apiUrl;
-    private String successUrl;
-    private String failUrl;
 }

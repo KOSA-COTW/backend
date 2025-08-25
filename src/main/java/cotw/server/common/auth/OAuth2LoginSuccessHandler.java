@@ -32,7 +32,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final MemberRepository memberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
 
-    // 프론트 리다이렉트 주소 (환경변수/설정으로 빼도 OK)
     private final String frontRedirectBase = "http://localhost:5173/oauth2/success";
 
     @Override
@@ -46,14 +45,15 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         OAuth2User oAuth2User = (OAuth2User) oauthToken.getPrincipal();
         Map<String, Object> attrs = oAuth2User.getAttributes();
 
-        // 1) provider / providerId 식별
+        // provider / providerId 식별
         ProviderType provider = toProviderType(registrationId);
-        String providerId = resolveProviderId(attrs); // "id"로 표준화(구글: sub → id 매핑)
+        String providerId = resolveProviderId(attrs);
 
-        // 2) 멤버 조회 (CustomOAuth2UserService에서 upsert 했으므로 반드시 존재)
+        // 멤버 조회 (CustomOAuth2UserService에서 upsert 했으므로 반드시 존재)
         Member member = memberRepository
                 .findByProviderAndProviderId(provider, providerId)
                 .orElseThrow(() -> new IllegalStateException("OAuth2 user upsert missing: " + provider + ":" + providerId));
+
 
         String role = member.getRole().name(); // 예: USER → ROLE_USER
         long v = member.getTokenVersion();
@@ -66,15 +66,15 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         // 중복된 토큰이 존재 할 시 기존 것을 삭제 후 저장
         refreshTokenRepository.deleteByEmail(member.getEmail());
 
-        // 4) refresh 토큰 저장 (DB)
+
+        // refresh 토큰 저장 (DB)
         saveRefreshToken(member.getEmail(), refresh, 24 * 60 * 60 * 1000L);
 
-        // 5) 응답 구성
-        // 5-1) Authorization 헤더 (리다이렉트 이후 JS에서 못 읽음 → 참고용/비API 시)
+        // 응답 구성
         response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + access);
         response.addHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Authorization");
 
-        // 5-2) Refresh 토큰은 HttpOnly 쿠키로 (크로스 도메인이면 SameSite=None; Secure 필수)
+        // Refresh 토큰은 HttpOnly 쿠키로
         ResponseCookie refreshCookie = ResponseCookie.from("refresh", refresh)
                 .httpOnly(true)
                 .secure(false)               // 로컬 http 테스트면 false, https 환경에서 true
@@ -84,12 +84,14 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
+
         // 6) 프론트로 리다이렉트
         // - 헤더는 리다이렉트 후 JS에서 못 읽으므로, 짧게는 해시(#)에 access를 실어 전달 가능
         // - 더 안전한 방식은 코드(1회용 key)를 발급하고 프론트가 /api/auth/exchange 로 교환하는 방식
+
         String redirectUrl = UriComponentsBuilder
                 .fromUriString(frontRedirectBase)
-                .fragment("access=" + access) // URL fragment로 전달 → 서버 로그/리퍼러에는 보통 안남음
+                .fragment("access=" + access)
                 .build()
                 .toUriString();
 
@@ -117,9 +119,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     // 구글/카카오/네이버 대응: attributes에서 표준 id를 찾아냄
     private String resolveProviderId(Map<String, Object> attrs) {
         Object id = firstNonNull(
-                attrs.get("id"),                 // kakao는 기본적으로 id
-                attrs.get("sub"),                // google OIDC subject
-                getDeep(attrs, "response.id")    // naver
+                attrs.get("id"),
+                attrs.get("sub"),
+                getDeep(attrs, "response.id")
         );
         if (id == null) throw new IllegalStateException("OAuth2 attributes missing id/sub/response.id");
         return String.valueOf(id);

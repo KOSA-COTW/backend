@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import cotw.server.domain.payment.config.SecurityUtil;
 import cotw.server.domain.payment.dto.request.PaymentConfirmRequest;
 import cotw.server.domain.payment.dto.request.PaymentCreateRequest;
-import cotw.server.domain.payment.dto.response.PaymentConfirmResponse;
 import cotw.server.domain.payment.dto.response.PaymentCreateResponse;
 import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
 import cotw.server.domain.payment.entity.PaymentStatus;
@@ -26,12 +25,15 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mockStatic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import org.springframework.context.annotation.Import;
 
 @WebMvcTest(PaymentController.class)
+@Import(SecurityTestConfig.class)
 @DisplayName("PaymentController 테스트")
 class PaymentControllerTest {
 
@@ -47,7 +49,6 @@ class PaymentControllerTest {
     private PaymentCreateRequest createRequest;
     private PaymentCreateResponse createResponse;
     private PaymentConfirmRequest confirmRequest;
-    private PaymentConfirmResponse confirmResponse;
     private PaymentDetailResponse detailResponse;
 
     @BeforeEach
@@ -68,14 +69,6 @@ class PaymentControllerTest {
                 .amount(10000)
                 .build();
 
-        confirmResponse = PaymentConfirmResponse.builder()
-                .orderId("ORDER_20240815_001")
-                .paymentKey("payment_key_123")
-                .status(PaymentStatus.DONE)
-                .type(PaymentType.NORMAL)
-                .amount(10000)
-                .orderName("테스트 모금 게시글")
-                .build();
 
         detailResponse = PaymentDetailResponse.builder()
                 .id(1L)
@@ -133,39 +126,18 @@ class PaymentControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(invalidRequest)))
                     .andDo(print())
-                    .andExpect(status().is5xxServerError());
+                    .andExpect(status().isBadRequest());
         }
     }
 
-    @Test
-    @DisplayName("결제 승인 API - 성공")
-    void confirmPayment_Success() throws Exception {
-        // given
-        given(paymentService.confirmPayment(any(PaymentConfirmRequest.class)))
-                .willReturn(confirmResponse);
-
-        // when & then
-        mockMvc.perform(post("/api/payments/confirm")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(confirmRequest)))
-                .andDo(print())
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.orderId").value("ORDER_20240815_001"))
-                .andExpect(jsonPath("$.paymentKey").value("payment_key_123"))
-                .andExpect(jsonPath("$.amount").value(10000))
-                .andExpect(jsonPath("$.status").value("DONE"));
-    }
 
     @Test
     @DisplayName("결제 성공 콜백 API - 성공")
     void paymentSuccess_Success() throws Exception {
         // given
-        given(paymentService.confirmPayment(any(PaymentConfirmRequest.class)))
-                .willReturn(confirmResponse);
 
         // when & then
         mockMvc.perform(get("/api/payments/success")
-                        .param("paymentType", "NORMAL")
                         .param("orderId", "ORDER_20240815_001")
                         .param("paymentKey", "payment_key_123")
                         .param("amount", "10000"))
@@ -179,19 +151,18 @@ class PaymentControllerTest {
     @DisplayName("결제 성공 콜백 API - 실패")
     void paymentSuccess_Failure() throws Exception {
         // given
-        given(paymentService.confirmPayment(any(PaymentConfirmRequest.class)))
-                .willThrow(new PaymentException("결제 승인에 실패했습니다."));
+        willThrow(new PaymentException("결제 승인에 실패했습니다."))
+                .given(paymentService).confirmPayment(any(PaymentConfirmRequest.class));
 
         // when & then
         mockMvc.perform(get("/api/payments/success")
-                        .param("paymentType", "NORMAL")
                         .param("orderId", "ORDER_20240815_001")
                         .param("paymentKey", "payment_key_123")
                         .param("amount", "10000"))
                 .andDo(print())
                 .andExpect(status().isFound())
                 .andExpect(header().string("Location", 
-                        "http://localhost:5173/payment/fail?message=결제 승인에 실패했습니다."));
+                        "http://localhost:5173/payment/fail?error=payment_failed"));
     }
 
     @Test

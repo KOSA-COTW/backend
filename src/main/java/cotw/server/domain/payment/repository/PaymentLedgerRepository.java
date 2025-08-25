@@ -11,5 +11,4 @@ public interface PaymentLedgerRepository extends JpaRepository<PaymentLedger, Lo
 
     List<PaymentLedger> findByMemberIdOrderByCreatedAtDesc(Long memberId);
     List<PaymentLedger> findByPostIdOrderByCreatedAtDesc(Long postId);
-    List<PaymentLedger> findByOrderIdOrderByCreatedAtDesc(String orderId);
 }

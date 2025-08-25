@@ -123,11 +123,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
         // 응답 설정
-        // 표준 Authorization 헤더 사용 (프론트가 쉽게 읽을 수 있도록)
         response.setHeader("Authorization", "Bearer " + access);
-
-        // (선택) 레거시 호환: 기존 "access" 헤더도 함께 넣어둠. 점진적 제거 가능.
-        response.setHeader("access", access);
+        response.addHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Authorization");
 
         response.setStatus(HttpStatus.OK.value());
     }
