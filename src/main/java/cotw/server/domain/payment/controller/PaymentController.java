@@ -6,10 +6,9 @@ import cotw.server.domain.payment.dto.request.PaymentConfirmRequest;
 import cotw.server.domain.payment.dto.request.PaymentCreateRequest;
 import cotw.server.domain.payment.dto.response.PaymentCancelResponse;
 import cotw.server.domain.payment.dto.response.PaymentCreateResponse;
-import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
+import cotw.server.domain.payment.dto.response.PaymentHistoryResponse;
 import cotw.server.domain.payment.service.PaymentService;
 import cotw.server.domain.payment.service.LedgerService;
-import cotw.server.domain.payment.entity.PaymentLedger;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -56,21 +55,21 @@ public class PaymentController {
     }
 
     @GetMapping("/member/{memberId}")
-    public ResponseEntity<List<PaymentLedger>> getPaymentsByMember(@PathVariable Long memberId) {
-        List<PaymentLedger> responses = ledgerService.getPaymentLedgersByMember(memberId);
+    public ResponseEntity<List<PaymentHistoryResponse>> getPaymentsByMember(@PathVariable Long memberId) {
+        List<PaymentHistoryResponse> responses = ledgerService.getPaymentHistoryByMember(memberId);
         return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/post/{postId}")
-    public ResponseEntity<List<PaymentLedger>> getPaymentsByPost(@PathVariable Long postId) {
-        List<PaymentLedger> responses = ledgerService.getPaymentLedgersByPost(postId);
+    public ResponseEntity<List<PaymentHistoryResponse>> getPaymentsByPost(@PathVariable Long postId) {
+        List<PaymentHistoryResponse> responses = ledgerService.getPaymentHistoryByPost(postId);
         return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/my")
-    public ResponseEntity<List<PaymentLedger>> getMyPayments() {
+    public ResponseEntity<List<PaymentHistoryResponse>> getMyPayments() {
         Long memberId = SecurityUtil.getCurrentMemberId();
-        List<PaymentLedger> responses = ledgerService.getPaymentLedgersByMember(memberId);
+        List<PaymentHistoryResponse> responses = ledgerService.getPaymentHistoryByMember(memberId);
         return ResponseEntity.ok(responses);
     }
 
