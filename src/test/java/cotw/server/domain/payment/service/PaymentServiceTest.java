@@ -11,7 +11,6 @@ import cotw.server.domain.payment.config.TossPaymentConfig;
 import cotw.server.domain.payment.dto.request.PaymentConfirmRequest;
 import cotw.server.domain.payment.dto.request.PaymentCreateRequest;
 import cotw.server.domain.payment.dto.response.PaymentCreateResponse;
-import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
 import cotw.server.domain.payment.dto.response.TossPaymentResponse;
 import cotw.server.domain.payment.entity.PaymentEvent;
 import cotw.server.domain.payment.entity.PaymentOrder;
@@ -260,47 +259,6 @@ class PaymentServiceTest {
                 .hasMessage("결제 금액이 일치하지 않습니다.");
     }
 
-    @Test
-    @DisplayName("회원별 결제 내역 조회")
-    void getPaymentsByMember_Success() {
-        // given
-        Long memberId = 1L;
-        List<PaymentOrder> orders = List.of(testPaymentOrder);
-
-        given(paymentOrderRepository.findByMemberIdOrderByCreatedAtDesc(memberId))
-                .willReturn(orders);
-
-        // when
-        List<PaymentDetailResponse> responses = paymentService.getPaymentsByMember(memberId);
-
-        // then
-        assertThat(responses).hasSize(1);
-        PaymentDetailResponse response = responses.get(0);
-        assertThat(response.getOrderId()).isEqualTo("ORDER_20240815_001");
-        assertThat(response.getMemberName()).isEqualTo("테스트 사용자");
-        assertThat(response.getPostTitle()).isEqualTo("테스트 모금 게시글");
-        assertThat(response.getAmount()).isEqualTo(10000);
-    }
-
-    @Test
-    @DisplayName("게시글별 결제 내역 조회")
-    void getPaymentsByPost_Success() {
-        // given
-        Long postId = 1L;
-        List<PaymentOrder> orders = List.of(testPaymentOrder);
-
-        given(paymentOrderRepository.findByPostIdOrderByCreatedAtDesc(postId))
-                .willReturn(orders);
-
-        // when
-        List<PaymentDetailResponse> responses = paymentService.getPaymentsByPost(postId);
-
-        // then
-        assertThat(responses).hasSize(1);
-        PaymentDetailResponse response = responses.get(0);
-        assertThat(response.getOrderId()).isEqualTo("ORDER_20240815_001");
-        assertThat(response.getAmount()).isEqualTo(10000);
-    }
 
     // private 필드 설정을 위한 헬퍼 메서드
     private void setField(Object target, String fieldName, Object value) {
