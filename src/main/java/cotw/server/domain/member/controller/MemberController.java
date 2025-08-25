@@ -2,10 +2,11 @@ package cotw.server.domain.member.controller;
 
 import cotw.server.common.jwt.CustomUserDetails;
 import cotw.server.domain.member.Dto.request.DeactivateRequestDTO;
+import cotw.server.domain.member.Dto.request.PatchImageReqeustDTO;
+import cotw.server.domain.member.Dto.request.PatchPasswordRequestDTO;
 import cotw.server.domain.member.Dto.request.SignUpRequestDTO;
 import cotw.server.domain.member.Dto.response.ShowInfoResponseDTO;
 import cotw.server.domain.member.Dto.response.SignUpResponseDTO;
-import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,20 @@ public class MemberController {
     @PostMapping("/recover")
     public ResponseEntity<Void> recover(@RequestBody String email) {
         memberService.recover(email);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/editpass")
+    public ResponseEntity<Void> changePassword(@AuthenticationPrincipal CustomUserDetails customUserDetails,
+                                       @RequestBody PatchPasswordRequestDTO requestDTO) {
+        memberService.editPassword(customUserDetails, requestDTO.currentPassword(), requestDTO.newPassword());
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/changeimage")
+    public ResponseEntity<Void> channgeProfileImage(@AuthenticationPrincipal CustomUserDetails customUserDetails,
+                                                    @RequestBody PatchImageReqeustDTO reqeustDTO){
+        memberService.editImage(customUserDetails, reqeustDTO.ImageUrl());
         return ResponseEntity.ok().build();
     }
 

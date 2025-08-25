@@ -10,6 +10,8 @@ import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
+import cotw.server.domain.payment.dto.response.PaymentHistoryResponse;
+import cotw.server.domain.payment.service.LedgerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +32,7 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final LedgerService ledgerService;
 
 
     public SignUpResponseDTO signUpMember(SignUpRequestDTO signUpRequestDTO) {
@@ -63,7 +66,11 @@ public class MemberService {
             throw new AccessDeniedException("Member not found");
         }
 
-        ShowInfoResponseDTO responseDTO = ShowInfoResponseDTO.from(member);
+        List<PaymentHistoryResponse> payments = ledgerService.getPaymentHistoryByMember(member.getId());
+        int oneTimeCount = payments.size();
+        Long totalDonation = payments.stream().mapToLong(PaymentHistoryResponse::getAmount).sum();
+
+        ShowInfoResponseDTO responseDTO = ShowInfoResponseDTO.from(member, oneTimeCount, totalDonation);
         return responseDTO;
     }
 
@@ -120,6 +127,26 @@ public class MemberService {
         // 4) 마지막으로 회원 삭제
         memberRepository.deleteByIdIn(ids);
         return ids.size();
+    }
+
+    @Transactional
+    public void editPassword(CustomUserDetails customUserDetails, String password, String newPassword) {
+        Member member = memberRepository.findByEmail(customUserDetails.getUsername()).orElseThrow(  );
+        boolean valid = validatePassword(member.getId(), password);
+        if(!valid){
+            throw new AccessDeniedException("invalid password");
+        }else {
+            member.setPassword(passwordEncoder.encode(newPassword));
+            memberRepository.save(member);
+        }
+    }
+
+    public void editImage(CustomUserDetails customUserDetails, String imageUrl) {
+        Member member = memberRepository.findByEmail(customUserDetails.getUsername()).orElseThrow(  );
+        if(member == null) throw new AccessDeniedException("member not found");
+
+        member.setPictureUrl(imageUrl);
+        memberRepository.save(member);
     }
 
 

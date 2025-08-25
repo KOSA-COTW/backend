@@ -1,13 +1,9 @@
 spring:
-  config:
-    activate:
-      on-profile: dev
-
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://localhost:5432/postgres
-    username: postgres
-    password: myPW
+    username: ${DB_ID:postgres}
+    password: ${DB_PW:myPW}
 
   jpa:
     properties:
@@ -70,9 +66,18 @@ logging:
       hibernate:
         sql: debug
         type: trace
+        
 jwt:
-  header: Authorization          # JWT 헤더에 사용할 이름
-  secret: "Y2VudGVyb2Z0aGV3b3JsZGFuZHRvZ2V0aGVyd2l0aHVzYTQ1MmFhYmI3YjliYmJiYjljODVjYzllZXcyMzUyb3BxcnN0dQ=="  # JWT 비밀 키를 이곳에 설정
+  header: Authorization
+  secret: "Y2VudGVyb2Z0aGV3b3JsZGFuZHRvZ2V0aGVyd2l0aHVzYTQ1MmFhYmI3YjliYmJiYjljODVjYzllZXcyMzUyb3BxcnN0dQ=="
+
+# Default AWS config (fallback values)
+aws:
+  accessKey: ${AWS_ACCESS_KEY:dummy}
+  secretKey: ${AWS_SECRET_KEY:dummy}
+  region: ${AWS_REGION:ap-southeast-2}
+  s3:
+    bucket: ${AWS_S3_BUCKET:dummy-bucket}
 
 
 toss:

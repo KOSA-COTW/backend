@@ -1,5 +1,7 @@
 package cotw.server.domain.board.service;
 
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
@@ -11,13 +13,17 @@ import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +31,10 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
+
+    private final AmazonS3Client s3Client;
+    @Value("${aws.s3.bucket}")
+    private String bucket;
 
     /**
      * 게시글 생성
@@ -137,6 +147,22 @@ public class PostService {
         }
 
         post.update(dto);
+
+        // 1) 기존 이미지 삭제
+        post.clearImages();
+
+        // 2) 새 이미지 등록
+        if (dto.getImageUrls() != null && !dto.getImageUrls().isEmpty()) {
+            for (int i = 0; i < dto.getImageUrls().size(); i++) {
+                Image img = Image.builder()
+                        .post(post)
+                        .imageUrl(dto.getImageUrls().get(i))
+                        .isThumbnail(i == 0)   // 첫 번째 이미지를 썸네일로
+                        .orderIndex(i)
+                        .build();
+                post.addImage(img);
+            }
+        }
     }
 
     /**
@@ -187,5 +213,30 @@ public class PostService {
         return top6.stream()
                 .map(PostListResponseDto::new)
                 .toList();
+    }
+
+    // 파일 업로드
+    public String upload(MultipartFile image) throws IOException {
+        // 원본 파일명
+        String originalFileName = image.getOriginalFilename();
+
+        // 저장할 파일명 (UUID 붙여 중복 방지)
+        String fileName = changeFileName(originalFileName);
+
+        // S3 메타데이터 생성
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentType(image.getContentType());
+        metadata.setContentLength(image.getSize());
+
+        // S3에 업로드
+        s3Client.putObject(bucket, fileName, image.getInputStream(), metadata);
+
+        // 업로드된 파일의 접근 URL 반환
+        return s3Client.getUrl(bucket, fileName).toString();
+    }
+
+    // 파일명 변경 메서드 (UUID_원본파일명)
+    private String changeFileName(String originalFileName) {
+        return UUID.randomUUID().toString() + "_" + originalFileName;
     }
 }
