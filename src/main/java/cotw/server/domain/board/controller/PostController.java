@@ -5,6 +5,7 @@ import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
+import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.service.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -107,6 +108,23 @@ public class PostController {
     @GetMapping
     public ResponseEntity<List<PostListResponseDto>> getAllPublicPosts() {
         List<PostListResponseDto> posts = postService.getAllPublicPosts();
+        return ResponseEntity.ok(posts);
+    }
+
+    /**
+     * 관리자용: 비공개 게시글 조회
+     * - 관리자만 접근 가능
+     * - 페이징, 정렬, 카테고리 필터링 지원
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin")
+    public ResponseEntity<List<PostListResponseDto>> getAdminOnlyPosts(
+            @RequestParam(defaultValue = "10") Integer limit,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "DESC") String sortDirection,
+            @RequestParam(required = false) Category category) {
+        
+        List<PostListResponseDto> posts = postService.getAdminOnlyPosts(limit, page, sortDirection, category);
         return ResponseEntity.ok(posts);
     }
 
