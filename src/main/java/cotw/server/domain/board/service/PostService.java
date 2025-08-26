@@ -6,6 +6,7 @@ import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
+import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Image;
 import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.board.repository.PostRepository;
@@ -14,7 +15,9 @@ import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -196,6 +199,28 @@ public class PostService {
         List<Post> posts = postRepository.findAllByIsPublicTrue();
 
         return posts.stream()
+                .map(PostListResponseDto::new)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PostListResponseDto> getAdminOnlyPosts(
+            Integer limit, 
+            Integer page, 
+            String sortDirection, 
+            Category category) {
+        
+        // 기본값 설정
+        int pageSize = (limit != null && (limit == 10 || limit == 20 || limit == 50)) ? limit : 10;
+        int pageNumber = (page != null && page > 0) ? page - 1 : 0; // 0-based index
+        String sort = (sortDirection != null && sortDirection.equalsIgnoreCase("ASC")) ? "ASC" : "DESC";
+        
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+        
+        Page<Post> postsPage = postRepository.findAdminOnlyPosts(category, sort, pageable);
+        
+        return postsPage.getContent()
+                .stream()
                 .map(PostListResponseDto::new)
                 .toList();
     }
