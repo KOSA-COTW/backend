@@ -1,10 +1,7 @@
 package cotw.server.domain.member.controller;
 
 import cotw.server.common.jwt.CustomUserDetails;
-import cotw.server.domain.member.Dto.request.DeactivateRequestDTO;
-import cotw.server.domain.member.Dto.request.PatchImageReqeustDTO;
-import cotw.server.domain.member.Dto.request.PatchPasswordRequestDTO;
-import cotw.server.domain.member.Dto.request.SignUpRequestDTO;
+import cotw.server.domain.member.Dto.request.*;
 import cotw.server.domain.member.Dto.response.ShowInfoResponseDTO;
 import cotw.server.domain.member.Dto.response.SignUpResponseDTO;
 import cotw.server.domain.member.service.MemberService;
@@ -69,6 +66,12 @@ public class MemberController {
         return ResponseEntity.ok().build();
     }
 
+    @PatchMapping("/editnickname")
+    public ResponseEntity<Void> changeNickname(@AuthenticationPrincipal CustomUserDetails customUserDetails,
+                                               @RequestBody PatchNicknameRequestDTO requestDTO){
+        memberService.editNickname(customUserDetails, requestDTO.newNickname());
+        return ResponseEntity.ok().build();
+    }
 
 
 }

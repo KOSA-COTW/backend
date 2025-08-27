@@ -3,6 +3,7 @@ package cotw.server.common.jwt.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.data.redis.core.RedisHash;
 
 import java.util.Date;
 
@@ -15,9 +16,10 @@ public class RefreshToken {
     private Long id;
 
     private String email;
-    
-    @Column(length = 512)  // JWT 토큰 길이를 고려하여 512자로 확장
-    private String refreshToken;
+
+    /** SHA-256 토큰 해시 (원문 저장 금지) */
+    @Column(length = 64, unique = true, nullable = false)
+    private String tokenHash;
 
     private String expiryDate;
 

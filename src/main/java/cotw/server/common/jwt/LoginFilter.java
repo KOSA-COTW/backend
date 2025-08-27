@@ -3,7 +3,8 @@ package cotw.server.common.jwt;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cotw.server.common.jwt.entity.RefreshToken;
-import cotw.server.common.jwt.repository.RefreshTokenRepository;
+import cotw.server.common.jwt.repository.RefreshTokenJpaRepository;
+import cotw.server.common.jwt.service.RefreshTokenService;
 import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import jakarta.servlet.FilterChain;
@@ -43,15 +44,15 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenService refreshTokenService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public LoginFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil, RefreshTokenRepository refreshTokenRepository) {
+    public LoginFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil, RefreshTokenService refreshTokenService) {
         super();
         setAuthenticationManager(authenticationManager);
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
-        this.refreshTokenRepository = refreshTokenRepository;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Override
@@ -112,9 +113,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String access = jwtUtil.createToken("access", username, roleForToken, m.getId(), v,3600000L);
         String refresh = jwtUtil.createToken("refresh", username, roleForToken, m.getId(), v, 86400000L);
 
-        // refresh token save
-        addRefreshToken(username, refresh, 1000*60*60*24L);
+        // 기존 사용자 Refresh 모두 제거(단말 구분 없다면 권장) 후 저장
+        refreshTokenService.revokeAllByUser(username);
+        refreshTokenService.save(username, refresh, Duration.ofDays(1));
 
+        // dual service가 db에 직접 저장함
         //응답 설정
         response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + access);
 
@@ -176,23 +179,15 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         }
     }
 
-    private void addRefreshToken(String email, String refreshToken, Long expiredMs) {
-            Date date = new Date(System.currentTimeMillis() + expiredMs);
+//    private void addRefreshToken(String email, String refreshToken, Long expiredMs) {
+//            Date date = new Date(System.currentTimeMillis() + expiredMs);
+//
+//            RefreshToken refreshTokenEntity = new RefreshToken();
+//            refreshTokenEntity.setEmail(email);
+//            refreshTokenEntity.setRefreshToken(refreshToken);
+//            refreshTokenEntity.setExpiryDate(date.toString());
+//
+//            refreshTokenRepository.save(refreshTokenEntity);
+//    }
 
-            RefreshToken refreshTokenEntity = new RefreshToken();
-            refreshTokenEntity.setEmail(email);
-            refreshTokenEntity.setRefreshToken(refreshToken);
-            refreshTokenEntity.setExpiryDate(date.toString());
-
-            refreshTokenRepository.save(refreshTokenEntity);
-    }
-
-    private Cookie createCookie(String key, String value) {
-        Cookie cookie = new Cookie(key, value);
-        cookie.setMaxAge(24 * 60 * 60); // 24시간
-        cookie.setHttpOnly(true);       // JS에서 접근 불가
-        cookie.setPath("/");            // 전역
-        cookie.setSecure(false);        // 로컬 http 개발에선 false, 배포(HTTPS)에서는 true로!
-        return cookie;
-    }
 }

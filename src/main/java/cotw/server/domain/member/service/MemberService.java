@@ -1,7 +1,7 @@
 package cotw.server.domain.member.service;
 
 import cotw.server.common.jwt.CustomUserDetails;
-import cotw.server.common.jwt.repository.RefreshTokenRepository;
+import cotw.server.common.jwt.service.RefreshTokenService;
 import cotw.server.domain.member.Dto.request.LoginRequestDTO;
 import cotw.server.domain.member.Dto.request.SignUpRequestDTO;
 import cotw.server.domain.member.Dto.response.ShowInfoResponseDTO;
@@ -10,8 +10,12 @@ import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
-import cotw.server.domain.payment.dto.response.PaymentHistoryResponse;
-import cotw.server.domain.payment.service.LedgerService;
+import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
+import cotw.server.domain.payment.entity.PaymentStatus;
+import cotw.server.domain.payment.repository.PaymentOrderRepository;
+import cotw.server.domain.payment.repository.PaymentRepository;
+import cotw.server.domain.payment.service.PaymentService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,8 +35,10 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
-    private final RefreshTokenRepository refreshTokenRepository;
-    private final LedgerService ledgerService;
+    private final RefreshTokenService refreshTokenService;
+    private final PaymentService paymentService;
+    private final PaymentOrderRepository paymentOrderRepository;
+
 
 
     public SignUpResponseDTO signUpMember(SignUpRequestDTO signUpRequestDTO) {
@@ -41,7 +47,7 @@ public class MemberService {
             throw new IllegalArgumentException("email already used");
 
         String encodedPassword = passwordEncoder.encode(signUpRequestDTO.password());
-        Member newMember = signUpRequestDTO.toEntity(signUpRequestDTO.name(), signUpRequestDTO.email(), encodedPassword, Role.USER);
+        Member newMember = signUpRequestDTO.toEntity(signUpRequestDTO.name(), signUpRequestDTO.nickname(), signUpRequestDTO.email(), encodedPassword, Role.USER);
 
         memberRepository.save(newMember);
 
@@ -62,11 +68,8 @@ public class MemberService {
                 () -> new IllegalArgumentException("Invalid member")
         );
 
-        if(member == null) {
-            throw new AccessDeniedException("Member not found");
-        }
+        List<PaymentDetailResponse> payments = paymentOrderRepository.findByMemberIdAndStatus(customUserDetails.getMemberId(), PaymentStatus.DONE);
 
-        List<PaymentHistoryResponse> payments = ledgerService.getPaymentHistoryByMember(member.getId());
         int oneTimeCount = payments.size();
         Long totalDonation = payments.stream().mapToLong(PaymentHistoryResponse::getAmount).sum();
 
@@ -84,7 +87,7 @@ public class MemberService {
             m.setDeletedAt(LocalDateTime.now());
             m.setRetentionUntil(LocalDateTime.now().plus(retention));
             m.setTokenVersion(m.getTokenVersion() + 1); // 기존 토큰 무효화
-            refreshTokenRepository.deleteByEmail(m.getEmail()); // Refresh 즉시 폐기
+            refreshTokenService.revokeAllByUser(m.getEmail()); // Refresh 즉시 폐기
         }else {
             throw new AccessDeniedException("Invalid member");
         }
@@ -105,7 +108,7 @@ public class MemberService {
         m.setTokenVersion(m.getTokenVersion() + 1); // 새 버전으로 재발급 유도
 
         // 방어적으로 기존 refresh 전부 제거 (깨끗한 상태로 시작)
-        refreshTokenRepository.deleteByEmail(m.getEmail());
+        refreshTokenService.revokeAllByUser(m.getEmail());
     }
 
     public int hardDeleteExpiredMembersChunk(int chunkSize) {
@@ -122,7 +125,7 @@ public class MemberService {
         // commentRepo.anonymizeAuthorByMemberIds(ids, DELETED_USER_ID);
 
         // 3) refresh 전부 제거
-        // refreshTokenRepository.deleteByMemberIds(ids); // 구현 시
+        // for (Long id : ids) { refreshTokenService.revokeAllByUser(findEmailById(id)); } // 구현 방식에 맞게 적용
 
         // 4) 마지막으로 회원 삭제
         memberRepository.deleteByIdIn(ids);
@@ -137,7 +140,10 @@ public class MemberService {
             throw new AccessDeniedException("invalid password");
         }else {
             member.setPassword(passwordEncoder.encode(newPassword));
+            // 비번 변경 시 모든 토큰 무효화 + 재발급 유도
+            member.setTokenVersion(member.getTokenVersion() + 1);
             memberRepository.save(member);
+            refreshTokenService.revokeAllByUser(member.getEmail());
         }
     }
 
@@ -146,6 +152,14 @@ public class MemberService {
         if(member == null) throw new AccessDeniedException("member not found");
 
         member.setPictureUrl(imageUrl);
+        memberRepository.save(member);
+    }
+
+    public void editNickname(CustomUserDetails customUserDetails, String newNickname) {
+        Member member = memberRepository.findByEmail(customUserDetails.getUsername()).orElseThrow(  );
+        if(member == null) throw new AccessDeniedException("member not found");
+
+        member.setNickname(newNickname);
         memberRepository.save(member);
     }
 

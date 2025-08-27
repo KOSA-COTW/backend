@@ -5,6 +5,7 @@ import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
+import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.service.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -89,13 +90,19 @@ public class PostController {
      * - 관리자만 가능
      * - 작성 시 기본 false → 관리자가 true로 변경하면 공개됨
      */
-    @PreAuthorize("hasRole('ADMIN')")
-    @PatchMapping("/{postId}/visibility")
+    @PatchMapping("/visibility")
     public ResponseEntity<Void> changePostVisibility(
             @AuthenticationPrincipal CustomUserDetails principal,
-            @PathVariable Long postId,
-            @RequestParam boolean isPublic) {
-        postService.changePostVisibility(postId, isPublic, principal.getUsername());
+            @RequestBody Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        List<Integer> postIds = (List<Integer>) body.get("postIds");
+        boolean isPublic = (Boolean) body.get("isPublic");
+
+        postService.changePostsVisibility(
+                postIds.stream().map(Long::valueOf).toList(),
+                isPublic,
+                principal.getUsername()
+        );
         return ResponseEntity.ok().build();
     }
 
@@ -111,6 +118,39 @@ public class PostController {
     }
 
     /**
+     * 관리자용: 비공개 게시글 조회
+     * - 관리자만 접근 가능
+     * - 페이징, 정렬, 카테고리 필터링 지원
+     */
+    @GetMapping("/admin")
+    public ResponseEntity<List<PostListResponseDto>> getAdminOnlyPosts(
+            @RequestParam(defaultValue = "10") Integer limit,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "DESC") String sortDirection,
+            @RequestParam(required = false) Category category) {
+        
+        List<PostListResponseDto> posts = postService.getAdminOnlyPosts(limit, page, sortDirection, category);
+        return ResponseEntity.ok(posts);
+    }
+
+    /**
+     * 관리자용: 공개 게시글 조회
+     * - 관리자만 접근 가능
+     * - 페이징, 정렬, 카테고리 필터링 지원
+     * - isPublic = true인 게시글만 조회
+     */
+    @GetMapping("/admin/public")
+    public ResponseEntity<List<PostListResponseDto>> getAdminOnlyPublicPosts(
+            @RequestParam(defaultValue = "10") Integer limit,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "DESC") String sortDirection,
+            @RequestParam(required = false) Category category) {
+        
+        List<PostListResponseDto> posts = postService.getAdminOnlyPublicPosts(limit, page, sortDirection, category);
+        return ResponseEntity.ok(posts);
+    }
+
+    /**
      * 메인 화면용: 공개 + 마감 임박 6개
      * - 누구나 접근 가능
      */
@@ -119,8 +159,11 @@ public class PostController {
         return ResponseEntity.ok(postService.getHomePosts());
     }
 
+    /**
+     * 이미지 업로드
+     */
     @PostMapping("/upload")
-    public Map<String, String> upload(@RequestPart("file") MultipartFile file) throws IOException {
+    public Map<String, String> uploadImage(@RequestPart("file") MultipartFile file) throws IOException {
         String imageUrl = postService.upload(file);
         return Map.of("url", imageUrl);
     }

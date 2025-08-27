@@ -48,6 +48,8 @@ public class Member extends BaseEntity {
 
     private String name;
 
+    private String nickname;
+
     @Column(nullable = false, unique = true)
     private String email;
     private String password;
@@ -109,6 +111,7 @@ public class Member extends BaseEntity {
         m.provider = provider;                 // GOOGLE/KAKAO/...
         m.providerId = providerId;
         m.name = name;
+        m.nickname = name;
         m.email = email != null ? email.toLowerCase() : null;
         // createdAt은 JPA Auditing이 자동으로 설정
         return m;
