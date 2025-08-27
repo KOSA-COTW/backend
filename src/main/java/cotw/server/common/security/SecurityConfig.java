@@ -100,7 +100,7 @@ public class SecurityConfig {
                 // 소프트 삭제 관련 요청
                 .requestMatchers(HttpMethod.POST, "/deactivate", "/recover").permitAll()
 
-                .requestMatchers(HttpMethod.PATCH, "/editpass", "/changeimage").permitAll()
+                .requestMatchers(HttpMethod.PATCH, "/editpass", "/changeimage", "/editnickname").permitAll()
 
                 // 공개 조회
                 .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
