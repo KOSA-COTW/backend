@@ -37,7 +37,7 @@ public class PaymentHistoryResponse {
                 .amount(ledger.getAmount())
                 .status(ledger.getStatus())
                 .orderId(ledger.getOrderId())
-                .paymentMethod("토스페이먼츠") // 기본값
+                .paymentMethod(ledger.getPaymentMethod())
                 .postId(ledger.getPostId())
                 .memberName(ledger.getMemberName())
                 .paymentKey(ledger.getPaymentKey())

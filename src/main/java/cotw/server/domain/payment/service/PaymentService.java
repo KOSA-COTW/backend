@@ -143,6 +143,7 @@ public class PaymentService {
                 .status(PaymentStatus.DONE)
                 .type(PaymentType.NORMAL)
                 .rawData(convertToJson(tossResponse))
+                .paymentMethod(tossResponse.getMethod())
                 .build();
 
         paymentOrderRepository.save(paymentOrder);

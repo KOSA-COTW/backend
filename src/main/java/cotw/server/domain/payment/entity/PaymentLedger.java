@@ -59,6 +59,9 @@ public class PaymentLedger extends BaseEntity {
     @Column
     private String cancelReason;              // 취소 사유
     
+    @Column
+    private String paymentMethod;             // 결제 방법 (토스에서 받은 method 값)
+    
     public void updateToCanceled(String cancelReason, LocalDateTime canceledAt) {
         this.status = PaymentStatus.CANCELED;
         this.cancelReason = cancelReason;
