@@ -25,27 +25,28 @@ public class CommentLikeService {
     private final EntityManager em;
 
     public LikeResponse like(Long commentId, LikeRequest req) {
-        Comment c = get(commentId);
+        // 관리 상태 보장 (없으면 404)
+        Comment c = commentRepository.findById(commentId)
+                .orElseThrow(() -> new EntityNotFoundException("comment not found: " + commentId));
 
         try {
-            // UNIQUE(comment_id, member_id) 제약으로 중복 좋아요는 여기서 예외 발생
+            // UNIQUE(comment_id, member_id) 제약으로 중복 좋아요 시 예외 발생
             likeRepository.save(CommentLike.builder()
-                    .comment(c)
+                    .comment(c) // 이미 관리 상태
                     .member(em.getReference(Member.class, req.memberId()))
                     .build());
 
-            // 실제 삽입된 경우에만 원자적 증가
+            // 실제 삽입된 경우만 증가
             commentRepository.incrementLikeCount(commentId);
 
-            // 최신 카운트를 정확히 주고 싶으면 flush+refresh
+            // 최신 카운트 보장
             em.flush();
             em.refresh(c);
 
             return new LikeResponse(commentId, c.getLikeCount(), true);
 
         } catch (DataIntegrityViolationException e) {
-            // 이미 좋아요 상태(멱등)
-            // 최신값 보장을 위해 refresh 시도(필수는 아님)
+            // 이미 좋아요(멱등)
             em.flush();
             em.refresh(c);
             return new LikeResponse(commentId, c.getLikeCount(), true);
@@ -53,24 +54,17 @@ public class CommentLikeService {
     }
 
     public LikeResponse unlike(Long commentId, Long memberId) {
-        Comment c = get(commentId);
+        // 관리 상태 보장 (없으면 404)
+        Comment c = commentRepository.findById(commentId)
+                .orElseThrow(() -> new EntityNotFoundException("comment not found: " + commentId));
 
         long deleted = likeRepository.deleteByCommentIdAndMemberId(commentId, memberId);
         if (deleted > 0) {
             commentRepository.decrementLikeCount(commentId);
-            em.flush();
-            em.refresh(c);
-            return new LikeResponse(commentId, c.getLikeCount(), false);
-        } else {
-            // 이미 좋아요가 없는 상태(멱등)
-            em.flush();
-            em.refresh(c);
-            return new LikeResponse(commentId, c.getLikeCount(), false);
         }
-    }
 
-    private Comment get(Long id) {
-        return commentRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("comment not found: " + id));
+        em.flush();
+        em.refresh(c);
+        return new LikeResponse(commentId, c.getLikeCount(), false);
     }
 }
