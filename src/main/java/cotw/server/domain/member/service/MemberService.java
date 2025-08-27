@@ -10,7 +10,7 @@ import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
-import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
+import cotw.server.domain.payment.dto.response.PaymentHistoryResponse;
 import cotw.server.domain.payment.entity.PaymentStatus;
 import cotw.server.domain.payment.repository.PaymentOrderRepository;
 import cotw.server.domain.payment.repository.PaymentRepository;
@@ -68,7 +68,7 @@ public class MemberService {
                 () -> new IllegalArgumentException("Invalid member")
         );
 
-        List<PaymentDetailResponse> payments = paymentOrderRepository.findByMemberIdAndStatus(customUserDetails.getMemberId(), PaymentStatus.DONE);
+        List<PaymentHistoryResponse> payments = paymentOrderRepository.findByMemberIdAndStatus(customUserDetails.getMemberId(), PaymentStatus.DONE);
 
         int oneTimeCount = payments.size();
         Long totalDonation = payments.stream().mapToLong(PaymentHistoryResponse::getAmount).sum();

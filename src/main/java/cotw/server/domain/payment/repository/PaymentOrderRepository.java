@@ -1,7 +1,7 @@
 package cotw.server.domain.payment.repository;
 
 import cotw.server.domain.admin.dto.response.AdminTopDonorResponse;
-import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
+import cotw.server.domain.payment.dto.response.PaymentHistoryResponse;
 import cotw.server.domain.payment.entity.PaymentOrder;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +22,7 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     List<PaymentOrder> findByPostIdOrderByCreatedAtDesc(Long postId);
     boolean existsByOrderId(String orderId);
 
-    List<PaymentDetailResponse> findByMemberIdAndStatus(Long memberId, PaymentStatus status);
+    List<PaymentHistoryResponse> findByMemberIdAndStatus(Long memberId, PaymentStatus status);
 
     // ===== 관리자 통계 =====
 
