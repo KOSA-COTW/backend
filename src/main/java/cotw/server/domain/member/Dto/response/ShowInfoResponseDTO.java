@@ -19,7 +19,9 @@ public record ShowInfoResponseDTO(
         Long totalDonation
 ) {
 
-    public static ShowInfoResponseDTO from(Member member, int oneTimeCount, Long totalDonation) {
+    public static ShowInfoResponseDTO from(Member member,
+                                           int oneTimeCount, Long totalDonation
+    ) {
         return new ShowInfoResponseDTO(
                 member.getId(),
                 member.getEmail(),
