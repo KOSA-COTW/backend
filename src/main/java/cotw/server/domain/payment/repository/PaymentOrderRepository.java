@@ -22,6 +22,7 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     List<PaymentOrder> findByPostIdOrderByCreatedAtDesc(Long postId);
     boolean existsByOrderId(String orderId);
 
+
     List<PaymentHistoryResponse> findByMemberIdAndStatus(Long memberId, PaymentStatus status);
 
     // ===== 관리자 통계 =====
