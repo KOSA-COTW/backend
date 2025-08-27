@@ -23,11 +23,12 @@ public class PaymentHistoryResponse {
     private String paymentMethod;
     private Long postId;
     private String memberName;
-    
+    private String paymentKey;
+
     // 취소 관련 정보
     private LocalDateTime canceledAt;
     private String cancelReason;
-    
+
     public static PaymentHistoryResponse fromEntity(cotw.server.domain.payment.entity.PaymentLedger ledger) {
         return PaymentHistoryResponse.builder()
                 .id(ledger.getId())
@@ -39,6 +40,7 @@ public class PaymentHistoryResponse {
                 .paymentMethod("토스페이먼츠") // 기본값
                 .postId(ledger.getPostId())
                 .memberName(ledger.getMemberName())
+                .paymentKey(ledger.getPaymentKey())
                 .canceledAt(ledger.getCanceledAt())
                 .cancelReason(ledger.getCancelReason())
                 .build();
