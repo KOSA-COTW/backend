@@ -82,12 +82,12 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
                                   Pageable pageable);
 
     // ===== 비정규화 카운터: 원자적 증가/감소 =====
-    // flush 즉시 수행 + 1차 캐시 자동 클리어로 stale 방지
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    // flush만 자동, clear는 비활성화하여 관리 상태 유지
+    @Modifying(flushAutomatically = true)
     @Query("update Comment c set c.likeCount = c.likeCount + 1 where c.id = :commentId")
     int incrementLikeCount(@Param("commentId") Long commentId);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Modifying(flushAutomatically = true)
     @Query("""
         update Comment c
            set c.likeCount = case when c.likeCount > 0 then c.likeCount - 1 else 0 end
@@ -97,11 +97,11 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
 
     // ====== 관리자 전용 조회 ======
-// 상태 정의
-// PENDING : 숨김 & 삭제 아님 & 검토기한 >= now
-// EXPIRED : 숨김 & 삭제 아님 & 검토기한  < now
-// HIDDEN  : 숨김(삭제 포함) 전체
-// ALL     : 신고 관련 모든 것 (reportCount>0 or 숨김 or 검토기한 설정됨)
+    // 상태 정의
+    // PENDING : 숨김 & 삭제 아님 & 검토기한 >= now
+    // EXPIRED : 숨김 & 삭제 아님 & 검토기한  < now
+    // HIDDEN  : 숨김(삭제 포함) 전체
+    // ALL     : 신고 관련 모든 것 (reportCount>0 or 숨김 or 검토기한 설정됨)
 
     @Query(value = """
     select c from Comment c
