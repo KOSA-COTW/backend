@@ -2,10 +2,11 @@ package cotw.server.common;
 
 import cotw.server.domain.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-
+@Slf4j
 @Component
 @RequiredArgsConstructor
 class RetentionCleanupJob {
@@ -20,6 +21,6 @@ class RetentionCleanupJob {
             n = memberService.hardDeleteExpiredMembersChunk(500);
             total += n;
         } while (n > 0);
-        // log.info("Hard-deleted {} expired members", total);
+        log.info("Hard-deleted {} expired members", total);
     }
 }

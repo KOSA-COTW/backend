@@ -1,5 +1,6 @@
 package cotw.server.common.jwt;
 
+import cotw.server.domain.member.entity.Member;
 import org.springframework.security.authentication.AccountExpiredException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
@@ -14,8 +15,8 @@ public class MemberStatusPostChecker implements UserDetailsChecker {
 
     @Override
     public void check(UserDetails user) {
-        var cud = (CustomUserDetails) user;
-        var m = cud.getMember();
+        CustomUserDetails cud = (CustomUserDetails) user;
+        Member m = cud.getMember();
 
         switch (m.getStatus()) {
             case ACTIVE -> { /* OK */ }

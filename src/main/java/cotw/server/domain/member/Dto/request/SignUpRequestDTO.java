@@ -15,12 +15,15 @@ public record SignUpRequestDTO(
         String email,
 
         @NotNull(message = "password는 필수 값 입니다")
-        String password
+        String password,
+
+        String nickname
 ) {
 
-    public Member toEntity(String name, String email, String password, Role role) {
+    public Member toEntity(String name,String nickname, String email, String password, Role role) {
         return Member.builder()
                 .name(name)
+                .nickname(nickname)
                 .email(email)
                 .password(password)
                 .role(role)
