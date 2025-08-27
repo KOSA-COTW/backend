@@ -36,6 +36,7 @@ public class LedgerService {
                     .memberName(paymentOrder.getMember().getName())
                     .postTitle(paymentOrder.getPost().getTitle())
                     .originalCreatedAt(LocalDateTime.now())
+                    .paymentMethod(paymentOrder.getPaymentMethod())
                     .build();
 
             paymentLedgerRepository.save(ledger);
