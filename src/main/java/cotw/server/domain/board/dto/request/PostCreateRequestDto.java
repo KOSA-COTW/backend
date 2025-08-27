@@ -33,7 +33,6 @@ public class PostCreateRequestDto {
     private int amount;
 
     // 이미지 경로 리스트
-    @NotEmpty(message = "이미지는 최소 1개 이상 등록해야 합니다.")
     private List<String> imageUrls;
 
     @NotNull(message = "기부 마감일은 필수입니다.")
@@ -56,11 +55,11 @@ public class PostCreateRequestDto {
     // 이미지 URL들을 Image 엔티티 리스트로 변환
     public List<Image> toImageEntityList(Post post) {
         List<Image> images = new ArrayList<>();
-        if (imageUrls != null) {
+        if (imageUrls != null && !imageUrls.isEmpty()) {
             for (int i = 0; i < imageUrls.size(); i++) {
                 images.add(Image.builder()
                         .imageUrl(imageUrls.get(i))
-                        .isThumbnail(i == 0) // 첫 번째 이미지를 썸네일로 설정
+                        .isThumbnail(i == 0)
                         .orderIndex(i)
                         .post(post)
                         .build());

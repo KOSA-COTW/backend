@@ -117,6 +117,7 @@ public class SecurityConfig {
 
                 // 관리자 전용
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/api/posts/visibility").hasRole("ADMIN")
 
                 .anyRequest().authenticated()
         );
