@@ -8,6 +8,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 @NoArgsConstructor
@@ -27,6 +30,12 @@ public class Notice extends BaseEntity {
     @Column(nullable = false)
     private boolean isPinned; // 상단 고정 여부
 
+    // 이미지 URL 리스트
+    @ElementCollection
+    @CollectionTable(name = "notice_images", joinColumns = @JoinColumn(name = "notice_id"))
+    @Column(name = "image_url")
+    private List<String> imageUrls = new ArrayList<>();
+
     public void update(NoticeRequestDto dto) {
         if (dto.getTitle() != null) {
             this.title = dto.getTitle();
@@ -36,6 +45,10 @@ public class Notice extends BaseEntity {
         }
         if (dto.getIsPinned() != null) {
             this.isPinned = dto.getIsPinned();
+        }
+        if (dto.getImageUrls() != null) {
+            this.imageUrls.clear();
+            this.imageUrls.addAll(dto.getImageUrls());
         }
     }
 }

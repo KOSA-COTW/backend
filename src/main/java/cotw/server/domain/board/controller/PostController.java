@@ -90,13 +90,19 @@ public class PostController {
      * - 관리자만 가능
      * - 작성 시 기본 false → 관리자가 true로 변경하면 공개됨
      */
-    @PreAuthorize("hasRole('ADMIN')")
-    @PatchMapping("/{postId}/visibility")
+    @PatchMapping("/visibility")
     public ResponseEntity<Void> changePostVisibility(
             @AuthenticationPrincipal CustomUserDetails principal,
-            @PathVariable Long postId,
-            @RequestParam boolean isPublic) {
-        postService.changePostVisibility(postId, isPublic, principal.getUsername());
+            @RequestBody Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        List<Integer> postIds = (List<Integer>) body.get("postIds");
+        boolean isPublic = (Boolean) body.get("isPublic");
+
+        postService.changePostsVisibility(
+                postIds.stream().map(Long::valueOf).toList(),
+                isPublic,
+                principal.getUsername()
+        );
         return ResponseEntity.ok().build();
     }
 
@@ -153,8 +159,11 @@ public class PostController {
         return ResponseEntity.ok(postService.getHomePosts());
     }
 
+    /**
+     * 이미지 업로드
+     */
     @PostMapping("/upload")
-    public Map<String, String> upload(@RequestPart("file") MultipartFile file) throws IOException {
+    public Map<String, String> uploadImage(@RequestPart("file") MultipartFile file) throws IOException {
         String imageUrl = postService.upload(file);
         return Map.of("url", imageUrl);
     }
