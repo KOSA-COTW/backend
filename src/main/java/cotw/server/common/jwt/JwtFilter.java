@@ -8,6 +8,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.lang.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -21,7 +22,6 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.List;
 
 @Slf4j
@@ -42,8 +42,9 @@ public class JwtFilter extends OncePerRequestFilter {
     );
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request, 
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
 
 
         // 화이트리스트는 토큰이 있어도 무조건 통과
@@ -53,14 +54,6 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         String token = resolveAccessToken(request);
-
-        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader != null && authHeader.toLowerCase().startsWith("bearer ")) {
-            token = authHeader.substring(7).trim();
-        }
-        if (token == null) {
-            token = request.getHeader("access");
-        }
 
 
         //  토큰이 없다면 다음 필터로
@@ -128,9 +121,7 @@ public class JwtFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.toLowerCase().startsWith("bearer ")) {
             return authHeader.substring(7).trim();
         }
-        // 레거시/테스트용 헤더
-        String legacy = request.getHeader("access");
-        return (legacy != null && !legacy.isBlank()) ? legacy.trim() : null;
+        return null;
     }
 
     private void reject(HttpServletResponse response, int status, String code, String message) throws IOException {
