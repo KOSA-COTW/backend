@@ -42,9 +42,9 @@ public class JwtFilter extends OncePerRequestFilter {
     );
 
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request, 
-                                    @NonNull HttpServletResponse response,
-                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
 
 
         // 화이트리스트는 토큰이 있어도 무조건 통과
@@ -55,6 +55,13 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String token = resolveAccessToken(request);
 
+        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader != null && authHeader.toLowerCase().startsWith("bearer ")) {
+            token = authHeader.substring(7).trim();
+        }
+        if (token == null) {
+            token = request.getHeader("access");
+        }
 
         //  토큰이 없다면 다음 필터로
         if (token == null) {
