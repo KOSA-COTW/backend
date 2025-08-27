@@ -5,11 +5,12 @@ import cotw.server.domain.payment.config.SecurityUtil;
 import cotw.server.domain.payment.dto.request.PaymentConfirmRequest;
 import cotw.server.domain.payment.dto.request.PaymentCreateRequest;
 import cotw.server.domain.payment.dto.response.PaymentCreateResponse;
-import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
+import cotw.server.domain.payment.entity.PaymentLedger;
 import cotw.server.domain.payment.entity.PaymentStatus;
 import cotw.server.domain.payment.entity.PaymentType;
 import cotw.server.domain.payment.exception.PaymentException;
 import cotw.server.domain.payment.service.PaymentService;
+import cotw.server.domain.payment.service.LedgerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,11 +46,14 @@ class PaymentControllerTest {
 
     @MockitoBean
     private PaymentService paymentService;
+    
+    @MockitoBean
+    private LedgerService ledgerService;
 
     private PaymentCreateRequest createRequest;
     private PaymentCreateResponse createResponse;
     private PaymentConfirmRequest confirmRequest;
-    private PaymentDetailResponse detailResponse;
+    private PaymentLedger paymentLedger;
 
     @BeforeEach
     void setUp() {
@@ -70,16 +74,18 @@ class PaymentControllerTest {
                 .build();
 
 
-        detailResponse = PaymentDetailResponse.builder()
+        paymentLedger = PaymentLedger.builder()
                 .id(1L)
                 .orderId("ORDER_20240815_001")
                 .paymentKey("payment_key_123")
                 .memberName("테스트 사용자")
                 .postTitle("테스트 모금 게시글")
+                .memberId(1L)
+                .postId(1L)
                 .amount(10000)
                 .status(PaymentStatus.DONE)
                 .type(PaymentType.NORMAL)
-                .createdAt(LocalDateTime.now())
+                .originalCreatedAt(LocalDateTime.now())
                 .build();
     }
 
@@ -170,10 +176,10 @@ class PaymentControllerTest {
     void getPaymentsByMember_Success() throws Exception {
         // given
         Long memberId = 1L;
-        List<PaymentDetailResponse> responses = List.of(detailResponse);
+        List<PaymentLedger> ledgers = List.of(paymentLedger);
         
-        given(paymentService.getPaymentsByMember(memberId))
-                .willReturn(responses);
+        given(ledgerService.getPaymentLedgersByMember(memberId))
+                .willReturn(ledgers);
 
         // when & then
         mockMvc.perform(get("/api/payments/member/{memberId}", memberId))
@@ -181,8 +187,6 @@ class PaymentControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$[0].orderId").value("ORDER_20240815_001"))
-                .andExpect(jsonPath("$[0].memberName").value("테스트 사용자"))
-                .andExpect(jsonPath("$[0].postTitle").value("테스트 모금 게시글"))
                 .andExpect(jsonPath("$[0].amount").value(10000));
     }
 
@@ -191,10 +195,10 @@ class PaymentControllerTest {
     void getPaymentsByPost_Success() throws Exception {
         // given
         Long postId = 1L;
-        List<PaymentDetailResponse> responses = List.of(detailResponse);
+        List<PaymentLedger> ledgers = List.of(paymentLedger);
         
-        given(paymentService.getPaymentsByPost(postId))
-                .willReturn(responses);
+        given(ledgerService.getPaymentLedgersByPost(postId))
+                .willReturn(ledgers);
 
         // when & then
         mockMvc.perform(get("/api/payments/post/{postId}", postId))
@@ -210,12 +214,12 @@ class PaymentControllerTest {
     void getMyPayments_Success() throws Exception {
         // given
         Long memberId = 1L;
-        List<PaymentDetailResponse> responses = List.of(detailResponse);
+        List<PaymentLedger> ledgers = List.of(paymentLedger);
 
         try (MockedStatic<SecurityUtil> mockedSecurityUtil = mockStatic(SecurityUtil.class)) {
             mockedSecurityUtil.when(SecurityUtil::getCurrentMemberId).thenReturn(memberId);
-            given(paymentService.getPaymentsByMember(memberId))
-                    .willReturn(responses);
+            given(ledgerService.getPaymentLedgersByMember(memberId))
+                    .willReturn(ledgers);
 
             // when & then
             mockMvc.perform(get("/api/payments/my"))

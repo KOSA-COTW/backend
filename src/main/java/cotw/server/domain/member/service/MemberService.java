@@ -15,6 +15,7 @@ import cotw.server.domain.payment.entity.PaymentStatus;
 import cotw.server.domain.payment.repository.PaymentOrderRepository;
 import cotw.server.domain.payment.repository.PaymentRepository;
 import cotw.server.domain.payment.service.PaymentService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -37,6 +38,7 @@ public class MemberService {
     private final RefreshTokenService refreshTokenService;
     private final PaymentService paymentService;
     private final PaymentOrderRepository paymentOrderRepository;
+
 
 
     public SignUpResponseDTO signUpMember(SignUpRequestDTO signUpRequestDTO) {
@@ -67,8 +69,9 @@ public class MemberService {
         );
 
         List<PaymentDetailResponse> payments = paymentOrderRepository.findByMemberIdAndStatus(customUserDetails.getMemberId(), PaymentStatus.DONE);
+
         int oneTimeCount = payments.size();
-        Long totalDonation = payments.stream().mapToLong(PaymentDetailResponse::getAmount).sum();
+        Long totalDonation = payments.stream().mapToLong(PaymentHistoryResponse::getAmount).sum();
 
         ShowInfoResponseDTO responseDTO = ShowInfoResponseDTO.from(member, oneTimeCount, totalDonation);
         return responseDTO;

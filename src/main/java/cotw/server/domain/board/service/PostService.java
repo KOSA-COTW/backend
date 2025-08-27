@@ -6,6 +6,7 @@ import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
+import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Image;
 import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.board.repository.PostRepository;
@@ -14,7 +15,9 @@ import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,7 +60,9 @@ public class PostService {
         // 엔티티 생성 및 이미지 바인딩
         Post post = dto.toPostEntity(author);
         List<Image> images = dto.toImageEntityList(post);
-        images.forEach(post::addImage);
+        if (images != null && !images.isEmpty()) {
+            images.forEach(post::addImage);
+        }
 
         // DB 저장
         postRepository.save(post);
@@ -151,13 +156,13 @@ public class PostService {
         // 1) 기존 이미지 삭제
         post.clearImages();
 
-        // 2) 새 이미지 등록
+        // 2) 새 이미지가 있는 경우에만 등록
         if (dto.getImageUrls() != null && !dto.getImageUrls().isEmpty()) {
             for (int i = 0; i < dto.getImageUrls().size(); i++) {
                 Image img = Image.builder()
                         .post(post)
                         .imageUrl(dto.getImageUrls().get(i))
-                        .isThumbnail(i == 0)   // 첫 번째 이미지를 썸네일로
+                        .isThumbnail(i == 0)
                         .orderIndex(i)
                         .build();
                 post.addImage(img);
@@ -171,19 +176,18 @@ public class PostService {
      * - isPublic = true → 공개, false → 비공개
      */
     @Transactional
-    public void changePostVisibility(Long postId, boolean isPublic, String requesterEmail) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다."));
-
+    public void changePostsVisibility(List<Long> postIds, boolean isPublic, String requesterEmail) {
         Member requester = memberRepository.findByEmail(requesterEmail)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
-        // 권한 검증 (관리자만)
-        if (!requester.getRole().equals(Role.ADMIN)) {
+        if (requester.getRole() != Role.ADMIN) {
             throw new AccessDeniedException("관리자만 변경 가능합니다.");
         }
 
-        post.changeVisibility(isPublic);
+        List<Post> posts = postRepository.findAllById(postIds);
+        for (Post post : posts) {
+            post.changeVisibility(isPublic);
+        }
     }
 
     /**
@@ -196,6 +200,50 @@ public class PostService {
         List<Post> posts = postRepository.findAllByIsPublicTrue();
 
         return posts.stream()
+                .map(PostListResponseDto::new)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PostListResponseDto> getAdminOnlyPosts(
+            Integer limit, 
+            Integer page, 
+            String sortDirection, 
+            Category category) {
+        
+        // 기본값 설정
+        int pageSize = (limit != null && (limit == 10 || limit == 20 || limit == 50)) ? limit : 10;
+        int pageNumber = (page != null && page > 0) ? page - 1 : 0; // 0-based index
+        String sort = (sortDirection != null && sortDirection.equalsIgnoreCase("ASC")) ? "ASC" : "DESC";
+        
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+        
+        Page<Post> postsPage = postRepository.findAdminOnlyPosts(category, sort, pageable);
+        
+        return postsPage.getContent()
+                .stream()
+                .map(PostListResponseDto::new)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PostListResponseDto> getAdminOnlyPublicPosts(
+            Integer limit, 
+            Integer page, 
+            String sortDirection, 
+            Category category) {
+        
+        // 기본값 설정
+        int pageSize = (limit != null && (limit == 10 || limit == 20 || limit == 50)) ? limit : 10;
+        int pageNumber = (page != null && page > 0) ? page - 1 : 0; // 0-based index
+        String sort = (sortDirection != null && sortDirection.equalsIgnoreCase("ASC")) ? "ASC" : "DESC";
+        
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+        
+        Page<Post> postsPage = postRepository.findAdminOnlyPublicPosts(category, sort, pageable);
+        
+        return postsPage.getContent()
+                .stream()
                 .map(PostListResponseDto::new)
                 .toList();
     }

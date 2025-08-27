@@ -6,13 +6,10 @@ import cotw.server.domain.payment.dto.request.PaymentConfirmRequest;
 import cotw.server.domain.payment.dto.request.PaymentCreateRequest;
 import cotw.server.domain.payment.dto.response.PaymentCancelResponse;
 import cotw.server.domain.payment.dto.response.PaymentCreateResponse;
-import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
 import cotw.server.domain.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -50,25 +47,6 @@ public class PaymentController {
                     .header("Location", "http://localhost:5173/payment/fail?error=payment_failed")
                     .build();
         }
-    }
-
-    @GetMapping("/member/{memberId}")
-    public ResponseEntity<List<PaymentDetailResponse>> getPaymentsByMember(@PathVariable Long memberId) {
-        List<PaymentDetailResponse> responses = paymentService.getPaymentsByMember(memberId);
-        return ResponseEntity.ok(responses);
-    }
-
-    @GetMapping("/post/{postId}")
-    public ResponseEntity<List<PaymentDetailResponse>> getPaymentsByPost(@PathVariable Long postId) {
-        List<PaymentDetailResponse> responses = paymentService.getPaymentsByPost(postId);
-        return ResponseEntity.ok(responses);
-    }
-
-    @GetMapping("/my")
-    public ResponseEntity<List<PaymentDetailResponse>> getMyPayments() {
-        Long memberId = SecurityUtil.getCurrentMemberId();
-        List<PaymentDetailResponse> responses = paymentService.getPaymentsByMember(memberId);
-        return ResponseEntity.ok(responses);
     }
 
     @PostMapping("/cancel")

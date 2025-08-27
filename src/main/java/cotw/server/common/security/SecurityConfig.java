@@ -5,7 +5,9 @@ import cotw.server.common.auth.OAuth2LoginSuccessHandler;
 import cotw.server.common.jwt.*;
 import cotw.server.common.jwt.service.RefreshTokenService;
 import jakarta.servlet.http.HttpServletResponse;
+
 import cotw.server.domain.member.repository.MemberRepository;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,7 +20,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -107,7 +108,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
 
                 // 생성 권한
-                .requestMatchers(HttpMethod.POST, "/api/posts").hasAnyRole("ADMIN", "ORGANIZATION")
+                .requestMatchers(HttpMethod.POST, "/api/posts").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/posts/admin").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/posts/admin/public").hasRole("ADMIN")
 
                 .requestMatchers(HttpMethod.GET, "/api/notices/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/notices/**").hasRole("ADMIN")
@@ -116,6 +119,7 @@ public class SecurityConfig {
 
                 // 관리자 전용
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/api/posts/visibility").hasRole("ADMIN")
 
                 .anyRequest().authenticated()
         );
