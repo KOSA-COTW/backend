@@ -2,7 +2,6 @@ package cotw.server.domain.member.service;
 
 import cotw.server.common.jwt.CustomUserDetails;
 import cotw.server.common.jwt.service.RefreshTokenService;
-import cotw.server.domain.member.Dto.request.LoginRequestDTO;
 import cotw.server.domain.member.Dto.request.SignUpRequestDTO;
 import cotw.server.domain.member.Dto.response.ShowInfoResponseDTO;
 import cotw.server.domain.member.Dto.response.SignUpResponseDTO;
@@ -10,11 +9,9 @@ import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
-import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
+import cotw.server.domain.payment.entity.PaymentOrder;
 import cotw.server.domain.payment.entity.PaymentStatus;
 import cotw.server.domain.payment.repository.PaymentOrderRepository;
-import cotw.server.domain.payment.repository.PaymentRepository;
-import cotw.server.domain.payment.service.PaymentService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -36,10 +33,7 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
-    private final PaymentService paymentService;
     private final PaymentOrderRepository paymentOrderRepository;
-
-
 
     public SignUpResponseDTO signUpMember(SignUpRequestDTO signUpRequestDTO) {
         // 이메일 유무 확인
@@ -68,10 +62,10 @@ public class MemberService {
                 () -> new IllegalArgumentException("Invalid member")
         );
 
-        List<PaymentDetailResponse> payments = paymentOrderRepository.findByMemberIdAndStatus(customUserDetails.getMemberId(), PaymentStatus.DONE);
+        List<PaymentOrder> payments = paymentOrderRepository.findByMemberIdAndStatus(customUserDetails.getMemberId(), PaymentStatus.DONE);
 
         int oneTimeCount = payments.size();
-        Long totalDonation = payments.stream().mapToLong(PaymentHistoryResponse::getAmount).sum();
+        Long totalDonation = payments.stream().mapToLong(PaymentOrder::getAmount).sum();
 
         ShowInfoResponseDTO responseDTO = ShowInfoResponseDTO.from(member, oneTimeCount, totalDonation);
         return responseDTO;

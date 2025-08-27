@@ -10,6 +10,7 @@ public record ShowInfoResponseDTO(
         Long memberId,
         String email,
         String name,
+        String nickname,
         String pictureUrl,
         Role role,
         ProviderType provider,
@@ -18,11 +19,14 @@ public record ShowInfoResponseDTO(
         Long totalDonation
 ) {
 
-    public static ShowInfoResponseDTO from(Member member, int oneTimeCount, Long totalDonation) {
+    public static ShowInfoResponseDTO from(Member member,
+                                           int oneTimeCount, Long totalDonation
+    ) {
         return new ShowInfoResponseDTO(
                 member.getId(),
                 member.getEmail(),
                 member.getName(),
+                member.getNickname(),
                 member.getPictureUrl(),
                 member.getRole(),
                 member.getProvider(),

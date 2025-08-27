@@ -1,6 +1,5 @@
 package cotw.server.domain.payment.repository;
 
-import cotw.server.domain.payment.dto.response.PaymentDetailResponse;
 import cotw.server.domain.payment.entity.PaymentOrder;
 import cotw.server.domain.payment.entity.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,5 +17,5 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     List<PaymentOrder> findByPostIdOrderByCreatedAtDesc(Long postId);
     boolean existsByOrderId(String orderId);
 
-    List<PaymentDetailResponse> findByMemberIdAndStatus(Long memberId, PaymentStatus status);
+    List<PaymentOrder> findByMemberIdAndStatus(Long memberId, PaymentStatus status);
 }
