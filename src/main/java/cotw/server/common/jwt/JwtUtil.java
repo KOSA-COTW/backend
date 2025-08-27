@@ -78,11 +78,5 @@ public class JwtUtil {
                 .compact(); // 토큰 생성
     }
     
-    // 기존 호환성을 위한 오버로드 메서드
-    public String createToken(String category, String username, String role, Long expirationTime) {
-        return createToken(category, username, role, null, null, expirationTime);
-    }
-
-
 
 }

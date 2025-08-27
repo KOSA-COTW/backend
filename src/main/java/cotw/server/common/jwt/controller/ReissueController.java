@@ -1,8 +1,8 @@
-package cotw.server.domain.member.controller;
+package cotw.server.common.jwt.controller;
 
 import cotw.server.common.jwt.JwtUtil;
 import cotw.server.common.jwt.entity.RefreshToken;
-import cotw.server.common.jwt.repository.RefreshTokenRepository;
+import cotw.server.common.jwt.service.RefreshTokenService;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +14,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.time.Duration;
 import java.util.Date;
 
 @Controller
@@ -22,8 +23,8 @@ import java.util.Date;
 public class ReissueController {
 
     private final JwtUtil jwtUtil;
+    private final RefreshTokenService refreshTokenService;
 
-    private final RefreshTokenRepository refreshTokenRepository;
 
     @PostMapping("/reissue")
     public ResponseEntity<?> reissue(HttpServletRequest request, HttpServletResponse response) {
@@ -63,11 +64,10 @@ public class ReissueController {
             return new ResponseEntity<>("invalid refresh token", HttpStatus.BAD_REQUEST);
         }
 
-        // DB에 저장됐는지 확인
-        Boolean isExist = refreshTokenRepository.existsByRefreshToken(refresh);
-        if (!isExist) {
+        // 저장소에 존재하는지 검사 (Redis 우선, DB 보강)
+        if (!refreshTokenService.exists(refresh)) {
             // response body
-            return new ResponseEntity<>("refresh token not found", HttpStatus.BAD_REQUEST);
+           return new ResponseEntity<>("INVALID_REFRESH", HttpStatus.UNAUTHORIZED);
         }
 
         String username = jwtUtil.getUsername(refresh);
@@ -81,8 +81,12 @@ public class ReissueController {
 
 
         // Refresh token 저장. DB에 기존 Refresh token 삭제 후 새 Refresh token 저장
-        refreshTokenRepository.deleteByRefreshToken(refresh);
-        addRefreshEntity(username, newRefresh, 1000*60*60*24L);
+//        refreshTokenRepository.deleteByRefreshToken(refresh);
+//        addRefreshEntity(username, newRefresh, 1000*60*60*24L);
+
+        // 회전: 기존 Refresh 제거 + 신규 저장
+        refreshTokenService.revoke(refresh);
+        refreshTokenService.save(username, newRefresh, Duration.ofDays(1));
 
 
         //response
@@ -92,17 +96,17 @@ public class ReissueController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    private void addRefreshEntity(String username, String newRefresh, Long expiry) {
-
-        Date date = new Date(System.currentTimeMillis() + expiry);
-
-        RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setEmail(username);
-        refreshToken.setRefreshToken(newRefresh);
-        refreshToken.setExpiryDate(date.toString());
-
-        refreshTokenRepository.save(refreshToken);
-    }
+//    private void addRefreshEntity(String username, String newRefresh, Long expiry) {
+//
+//        Date date = new Date(System.currentTimeMillis() + expiry);
+//
+//        RefreshToken refreshToken = new RefreshToken();
+//        refreshToken.setEmail(username);
+//        refreshToken.setRefreshToken(newRefresh);
+//        refreshToken.setExpiryDate(date.toString());
+//
+//        refreshTokenRepository.save(refreshToken);
+//    }
 
     private Cookie createCookie(String key, String value) {
         Cookie cookie = new Cookie(key, value);

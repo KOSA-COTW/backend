@@ -2,7 +2,7 @@ package cotw.server.common.auth;
 
 import cotw.server.common.jwt.JwtUtil;
 import cotw.server.common.jwt.entity.RefreshToken;
-import cotw.server.common.jwt.repository.RefreshTokenRepository;
+import cotw.server.common.jwt.service.RefreshTokenService;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.ProviderType;
 import cotw.server.domain.member.repository.MemberRepository;
@@ -10,6 +10,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
@@ -21,18 +22,27 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Date;
 import java.util.Map;
 
 @Component
-@RequiredArgsConstructor
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final JwtUtil jwtUtil;
     private final MemberRepository memberRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenService refreshTokenService;
+    private final String frontRedirectBase;
 
-    private final String frontRedirectBase = "http://localhost:5173/oauth2/success";
+    public OAuth2LoginSuccessHandler(
+            JwtUtil jwtUtil,
+            MemberRepository memberRepository,
+            RefreshTokenService refreshTokenService,
+            @Value("${app.front-redirect-base}") String frontRedirectBase   // .env에서 경로 가져온다.
+    ) {
+        this.jwtUtil = jwtUtil;
+        this.memberRepository = memberRepository;
+        this.refreshTokenService = refreshTokenService;
+        this.frontRedirectBase = frontRedirectBase;
+    }
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -63,12 +73,10 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String access  = jwtUtil.createToken("access",  member.getEmail(), role, memberId, v, 10 * 60 * 1000L);      // 10분
         String refresh = jwtUtil.createToken("refresh", member.getEmail(), role, memberId, v, 24 * 60 * 60 * 1000L); // 24시간
 
-        // 중복된 토큰이 존재 할 시 기존 것을 삭제 후 저장
-        refreshTokenRepository.deleteByEmail(member.getEmail());
 
-
-        // refresh 토큰 저장 (DB)
-        saveRefreshToken(member.getEmail(), refresh, 24 * 60 * 60 * 1000L);
+        // 기존 사용자 토큰 일괄 삭제 후 저장(회전/일원화)
+        refreshTokenService.revokeAllByUser(member.getEmail());
+        refreshTokenService.save(member.getEmail(), refresh, Duration.ofDays(1));
 
         // 응답 구성
         response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + access);
@@ -98,14 +106,14 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         response.sendRedirect(redirectUrl);
     }
 
-    private void saveRefreshToken(String email, String refresh, long expiresMs) {
-        Date expiry = new Date(System.currentTimeMillis() + expiresMs);
-        RefreshToken entity = new RefreshToken();
-        entity.setEmail(email);
-        entity.setRefreshToken(refresh);
-        entity.setExpiryDate(expiry.toString());
-        refreshTokenRepository.save(entity);
-    }
+//    private void saveRefreshToken(String email, String refresh, long expiresMs) {
+//        Date expiry = new Date(System.currentTimeMillis() + expiresMs);
+//        RefreshToken entity = new RefreshToken();
+//        entity.setEmail(email);
+//        entity.setRefreshToken(refresh);
+//        entity.setExpiryDate(expiry.toString());
+//        refreshTokenRepository.save(entity);
+//    }
 
     private ProviderType toProviderType(String registrationId) {
         return switch (registrationId.toLowerCase()) {

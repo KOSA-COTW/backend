@@ -3,7 +3,9 @@ package cotw.server.common.security;
 import cotw.server.common.auth.CustomOAuth2UserService;
 import cotw.server.common.auth.OAuth2LoginSuccessHandler;
 import cotw.server.common.jwt.*;
-import cotw.server.common.jwt.repository.RefreshTokenRepository;
+import cotw.server.common.jwt.service.RefreshTokenService;
+import jakarta.servlet.http.HttpServletResponse;
+
 import cotw.server.domain.member.repository.MemberRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +34,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenService refreshTokenService;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
     private final MemberRepository memberRepository;
@@ -62,7 +64,7 @@ public class SecurityConfig {
         LoginFilter loginFilter = new LoginFilter(
                 authenticationManager(),
                 jwtUtil,
-                refreshTokenRepository
+                refreshTokenService
         );
         loginFilter.setFilterProcessesUrl("/auth/login"); // 로그인 엔드포인트
         return loginFilter;
@@ -77,7 +79,7 @@ public class SecurityConfig {
             config.setAllowedOrigins(List.of("http://localhost:5173"));
             config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
             config.setAllowedHeaders(List.of("*"));
-            config.setExposedHeaders(List.of("Authorization"));
+            config.setExposedHeaders(List.of("Authorization", "access", "X-Access-Token"));
             config.setAllowCredentials(true); // refresh 토큰 쿠키 사용 시 필수
             config.setMaxAge(3600L);
             return config;
@@ -135,7 +137,7 @@ public class SecurityConfig {
                 // 2) 커스텀 로그인 필터: /auth/login 처리하여 JWT 발급
                 .addFilterAt(loginFilter(), UsernamePasswordAuthenticationFilter.class)
                 // 3) 커스텀 로그아웃 필터: 로그아웃/리프레시토큰 제거 등
-                .addFilterBefore(new CustomLogoutFilter(jwtUtil, refreshTokenRepository), LogoutFilter.class);
+                .addFilterBefore(new CustomLogoutFilter(jwtUtil, refreshTokenService), LogoutFilter.class);
 
 
         //세션 설정
