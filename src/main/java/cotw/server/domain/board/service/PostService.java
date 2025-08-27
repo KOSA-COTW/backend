@@ -225,6 +225,28 @@ public class PostService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<PostListResponseDto> getAdminOnlyPublicPosts(
+            Integer limit, 
+            Integer page, 
+            String sortDirection, 
+            Category category) {
+        
+        // 기본값 설정
+        int pageSize = (limit != null && (limit == 10 || limit == 20 || limit == 50)) ? limit : 10;
+        int pageNumber = (page != null && page > 0) ? page - 1 : 0; // 0-based index
+        String sort = (sortDirection != null && sortDirection.equalsIgnoreCase("ASC")) ? "ASC" : "DESC";
+        
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+        
+        Page<Post> postsPage = postRepository.findAdminOnlyPublicPosts(category, sort, pageable);
+        
+        return postsPage.getContent()
+                .stream()
+                .map(PostListResponseDto::new)
+                .toList();
+    }
+
     /**
      * 메인 화면용 6개
      * - 공개글만

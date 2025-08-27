@@ -116,7 +116,6 @@ public class PostController {
      * - 관리자만 접근 가능
      * - 페이징, 정렬, 카테고리 필터링 지원
      */
-    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin")
     public ResponseEntity<List<PostListResponseDto>> getAdminOnlyPosts(
             @RequestParam(defaultValue = "10") Integer limit,
@@ -125,6 +124,23 @@ public class PostController {
             @RequestParam(required = false) Category category) {
         
         List<PostListResponseDto> posts = postService.getAdminOnlyPosts(limit, page, sortDirection, category);
+        return ResponseEntity.ok(posts);
+    }
+
+    /**
+     * 관리자용: 공개 게시글 조회
+     * - 관리자만 접근 가능
+     * - 페이징, 정렬, 카테고리 필터링 지원
+     * - isPublic = true인 게시글만 조회
+     */
+    @GetMapping("/admin/public")
+    public ResponseEntity<List<PostListResponseDto>> getAdminOnlyPublicPosts(
+            @RequestParam(defaultValue = "10") Integer limit,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "DESC") String sortDirection,
+            @RequestParam(required = false) Category category) {
+        
+        List<PostListResponseDto> posts = postService.getAdminOnlyPublicPosts(limit, page, sortDirection, category);
         return ResponseEntity.ok(posts);
     }
 
