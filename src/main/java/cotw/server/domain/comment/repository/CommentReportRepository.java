@@ -3,8 +3,11 @@ package cotw.server.domain.comment.repository;
 import cotw.server.domain.comment.entity.CommentReport;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 
 public interface CommentReportRepository extends JpaRepository<CommentReport, Long> {
@@ -22,4 +25,12 @@ public interface CommentReportRepository extends JpaRepository<CommentReport, Lo
 
     // 댓글의 총 신고 수
     long countByCommentId(Long commentId);
+
+    @Query("select r.reason, count(r) from CommentReport r where r.comment.id = :commentId group by r.reason")
+    List<Object[]> countByReason(@Param("commentId") Long commentId);
+
+    @Query("select max(r.createdAt) from CommentReport r where r.comment.id = :commentId")
+    Optional<LocalDateTime> findLastReportedAt(@Param("commentId") Long commentId);
+
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 }
