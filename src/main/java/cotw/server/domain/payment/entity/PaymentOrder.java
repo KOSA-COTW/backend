@@ -49,6 +49,9 @@ public class PaymentOrder extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String rawData; // 토스에서 받은 원본 데이터 JSON
     
+    @Column
+    private String paymentMethod; // 결제 방법 (토스에서 받은 method 값)
+    
     public void updateStatus(PaymentStatus status) {
         this.status = status;
     }

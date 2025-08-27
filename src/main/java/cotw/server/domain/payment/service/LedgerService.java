@@ -1,8 +1,8 @@
 package cotw.server.domain.payment.service;
 
+import cotw.server.domain.payment.dto.response.PaymentHistoryResponse;
 import cotw.server.domain.payment.entity.PaymentLedger;
 import cotw.server.domain.payment.entity.PaymentOrder;
-import cotw.server.domain.payment.entity.PaymentStatus;
 import cotw.server.domain.payment.repository.PaymentLedgerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,7 +10,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -33,6 +35,8 @@ public class LedgerService {
                     .type(paymentOrder.getType())
                     .memberName(paymentOrder.getMember().getName())
                     .postTitle(paymentOrder.getPost().getTitle())
+                    .originalCreatedAt(LocalDateTime.now())
+                    .paymentMethod(paymentOrder.getPaymentMethod())
                     .build();
 
             paymentLedgerRepository.save(ledger);
@@ -52,26 +56,35 @@ public class LedgerService {
         return paymentLedgerRepository.findByPostIdOrderByCreatedAtDesc(postId);
     }
 
+    @Transactional(readOnly = true)
+    public List<PaymentHistoryResponse> getPaymentHistoryByMember(Long memberId) {
+        List<PaymentLedger> ledgers = paymentLedgerRepository.findByMemberIdOrderByCreatedAtDesc(memberId);
+        return ledgers.stream()
+                .map(PaymentHistoryResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentHistoryResponse> getPaymentHistoryByPost(Long postId) {
+        List<PaymentLedger> ledgers = paymentLedgerRepository.findByPostIdOrderByCreatedAtDesc(postId);
+        return ledgers.stream()
+                .map(PaymentHistoryResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
     @Async
     @Transactional
-    public void createCancellationLedgerAsync(PaymentOrder paymentOrder, String cancelReason) {
+    public void updateLedgerToCanceledAsync(PaymentOrder paymentOrder, String cancelReason) {
         try {
-            PaymentLedger cancellationLedger = PaymentLedger.builder()
-                    .orderId(paymentOrder.getOrderId() + "_CANCEL")
-                    .paymentKey(paymentOrder.getPaymentKey())
-                    .memberId(paymentOrder.getMember().getId())
-                    .postId(paymentOrder.getPost().getId())
-                    .amount(-paymentOrder.getAmount()) // 음수로 기록하여 취소를 표시
-                    .status(PaymentStatus.CANCELED) // 취소 상태로 명시
-                    .type(paymentOrder.getType())
-                    .memberName(paymentOrder.getMember().getName())
-                    .postTitle(paymentOrder.getPost().getTitle() + " (취소: " + cancelReason + ")")
-                    .build();
-
-            paymentLedgerRepository.save(cancellationLedger);
-            log.info("Cancellation PaymentLedger created successfully for orderId: {}", paymentOrder.getOrderId());
+            PaymentLedger existingLedger = paymentLedgerRepository.findByOrderId(paymentOrder.getOrderId())
+                    .orElseThrow(() -> new RuntimeException("PaymentLedger not found for orderId: " + paymentOrder.getOrderId()));
+            
+            existingLedger.updateToCanceled(cancelReason, LocalDateTime.now());
+            paymentLedgerRepository.save(existingLedger);
+            
+            log.info("PaymentLedger updated to CANCELED for orderId: {}", paymentOrder.getOrderId());
         } catch (Exception e) {
-            log.error("Failed to create cancellation PaymentLedger for orderId: {}", paymentOrder.getOrderId(), e);
+            log.error("Failed to update PaymentLedger to CANCELED for orderId: {}", paymentOrder.getOrderId(), e);
         }
     }
 }

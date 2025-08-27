@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @Builder
@@ -47,4 +49,22 @@ public class PaymentLedger extends BaseEntity {
 
     @Column(nullable = false)
     private String postTitle;
+    
+    @Column
+    private LocalDateTime originalCreatedAt;  // 원래 결제일
+    
+    @Column
+    private LocalDateTime canceledAt;         // 취소일 (취소된 경우)
+    
+    @Column
+    private String cancelReason;              // 취소 사유
+    
+    @Column
+    private String paymentMethod;             // 결제 방법 (토스에서 받은 method 값)
+    
+    public void updateToCanceled(String cancelReason, LocalDateTime canceledAt) {
+        this.status = PaymentStatus.CANCELED;
+        this.cancelReason = cancelReason;
+        this.canceledAt = canceledAt;
+    }
 }
