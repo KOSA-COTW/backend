@@ -12,5 +12,6 @@ public record CommentResponse(
         boolean isPublic,
         LocalDateTime createdAt,
         LocalDateTime moderationDueAt,
-        boolean liked
+        boolean liked,
+        String authorEmail
 ) {}

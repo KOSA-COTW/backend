@@ -87,11 +87,12 @@ public class CommentService {
     }
     // 기존 toRes 수정: 작성/수정 직후엔 liked=false로 고정(필요 시 오버로드 사용)
     private CommentResponse toRes(Comment c) {
+        String email = c.getMember().getEmail();
         return new CommentResponse(
                 c.getId(), c.getPost().getId(), c.getMember().getId(),
                 c.getContent(), c.getLikeCount(), c.getReportCount(), c.isPublic(),
                 c.getCreatedAt(), c.getModerationDueAt(),
-                false // ✅ 기본값
+                false, email
         );
     }
 
@@ -100,11 +101,16 @@ public class CommentService {
         boolean liked = (viewerId != null)
                 && likeRepository.existsByCommentIdAndMemberId(c.getId(), viewerId);
 
+        String email = c.getMember().getEmail();
+
         return new CommentResponse(
+
                 c.getId(), c.getPost().getId(), c.getMember().getId(),
                 c.getContent(), c.getLikeCount(), c.getReportCount(), c.isPublic(),
                 c.getCreatedAt(), c.getModerationDueAt(),
-                liked // ✅ 계산된 값
+                liked,
+                email
+
         );
     }
 }
