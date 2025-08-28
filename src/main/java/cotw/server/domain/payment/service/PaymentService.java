@@ -266,10 +266,10 @@ public class PaymentService {
         return buildCancelResponse(paymentOrder, request.getCancelReason());
     }
 
-    @CircuitBreaker(name = "paymentService", fallbackMethod = "fallbackTossCancelApi")
     @Retry(name = "paymentService")
-    @Bulkhead(name = "paymentService")
+    @CircuitBreaker(name = "paymentService", fallbackMethod = "fallbackTossCancelApi")
     @TimeLimiter(name = "paymentService")
+    @Bulkhead(name = "paymentService")
     public CompletableFuture<TossCancelResponse> callTossCancelApiAsync(PaymentCancelRequest request) {
         return CompletableFuture.supplyAsync(() -> callTossCancelApi(request));
     }
@@ -357,10 +357,10 @@ public class PaymentService {
     }
 
 
-    @CircuitBreaker(name = "paymentService", fallbackMethod = "fallbackTossConfirmApi")
     @Retry(name = "paymentService")
-    @Bulkhead(name = "paymentService")
+    @CircuitBreaker(name = "paymentService", fallbackMethod = "fallbackTossConfirmApi")
     @TimeLimiter(name = "paymentService")
+    @Bulkhead(name = "paymentService")
     public CompletableFuture<TossPaymentResponse> callTossConfirmApiAsync(PaymentConfirmRequest request) {
         return CompletableFuture.supplyAsync(() -> callTossConfirmApi(request));
     }
