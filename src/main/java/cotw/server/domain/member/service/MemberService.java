@@ -9,9 +9,9 @@ import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
-import cotw.server.domain.payment.dto.response.PaymentHistoryResponse;
+import cotw.server.domain.payment.entity.PaymentLedger;
 import cotw.server.domain.payment.entity.PaymentStatus;
-import cotw.server.domain.payment.repository.PaymentOrderRepository;
+import cotw.server.domain.payment.repository.PaymentLedgerRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -33,7 +33,7 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
-    private final PaymentOrderRepository paymentOrderRepository;
+    private final PaymentLedgerRepository paymentLedgerRepository;
 
     public SignUpResponseDTO signUpMember(SignUpRequestDTO signUpRequestDTO) {
         // 이메일 유무 확인
@@ -63,11 +63,10 @@ public class MemberService {
         );
 
 
-        List<PaymentHistoryResponse> payments = paymentOrderRepository.findByMemberIdAndStatus(customUserDetails.getMemberId(), PaymentStatus.DONE);
+        List<PaymentLedger> paymentLedgers = paymentLedgerRepository.findByMemberIdAndStatus(customUserDetails.getMemberId(), PaymentStatus.DONE);
 
-
-        int oneTimeCount = payments.size();
-        Long totalDonation = payments.stream().mapToLong(PaymentOrder::getAmount).sum();
+        int oneTimeCount = paymentLedgers.size();
+        Long totalDonation = paymentLedgers.stream().mapToLong(PaymentLedger::getAmount).sum();
 
         ShowInfoResponseDTO responseDTO = ShowInfoResponseDTO.from(member, oneTimeCount, totalDonation);
         return responseDTO;
