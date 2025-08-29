@@ -4,8 +4,6 @@ import cotw.server.common.auth.CustomOAuth2UserService;
 import cotw.server.common.auth.OAuth2LoginSuccessHandler;
 import cotw.server.common.jwt.*;
 import cotw.server.common.jwt.service.RefreshTokenService;
-import jakarta.servlet.http.HttpServletResponse;
-
 import cotw.server.domain.member.repository.MemberRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -76,7 +74,7 @@ public class SecurityConfig {
         // CORS
         http.cors(cors -> cors.configurationSource(request -> {
             CorsConfiguration config = new CorsConfiguration();
-            config.setAllowedOrigins(List.of("http://localhost:5173"));
+            config.setAllowedOrigins(List.of("http://localhost:5173", "https://frontend-five-pi-42.vercel.app"));
             config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
             config.setAllowedHeaders(List.of("*"));
             config.setExposedHeaders(List.of("Authorization", "access", "X-Access-Token"));
