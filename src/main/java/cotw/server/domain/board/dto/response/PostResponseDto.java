@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Image;
 import cotw.server.domain.board.entity.Post;
+import cotw.server.domain.board.entity.PostVisibility;
 import lombok.Getter;
 
 import java.time.LocalDate;
@@ -23,6 +24,10 @@ public class PostResponseDto {
     private String authorEmail;
     private Category category;
     private List<String> imageUrls;
+
+    // 게시글 상태
+    private PostVisibility visibilityStatus;
+    private String rejectionReason;
 
     // 날짜 정보
     private LocalDate deadline;
@@ -59,6 +64,10 @@ public class PostResponseDto {
         this.deadline = post.getDeadline();
         this.createdAt = post.getCreatedAt();
         this.updatedAt = post.getUpdatedAt();
+
+        // 공개 상태
+        this.visibilityStatus = post.getVisibilityStatus();
+        this.rejectionReason = post.getRejectionReason();
 
         // 이미지 URL 리스트
         List<String> imageUrls = new ArrayList<>();
