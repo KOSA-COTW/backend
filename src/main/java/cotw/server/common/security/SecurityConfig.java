@@ -7,6 +7,7 @@ import cotw.server.common.jwt.service.RefreshTokenService;
 import cotw.server.domain.member.repository.MemberRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -39,6 +40,9 @@ public class SecurityConfig {
     private final PasswordEncoder passwordEncoder;
     private final UserDetailsService userDetailsService;
     private final MemberStatusPostChecker memberStatusPostChecker;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
 
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
@@ -74,7 +78,7 @@ public class SecurityConfig {
         // CORS
         http.cors(cors -> cors.configurationSource(request -> {
             CorsConfiguration config = new CorsConfiguration();
-            config.setAllowedOrigins(List.of("http://localhost:5173", "https://frontend-five-pi-42.vercel.app"));
+            config.setAllowedOrigins(List.of("http://localhost:5173", frontendUrl));
             config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
             config.setAllowedHeaders(List.of("*"));
             config.setExposedHeaders(List.of("Authorization", "access", "X-Access-Token"));

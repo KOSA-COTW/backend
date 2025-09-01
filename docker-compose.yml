@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: cotw
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-cotw0319}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     ports:
       - "5432:5432"
@@ -16,14 +16,14 @@ services:
     networks:
       - cotw-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cotw_user -d cotw"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cotw"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   # Spring Boot 애플리케이션 (Docker Hub 이미지 사용)
   app:
-    image: ${DOCKER_IMAGE:-pado27/cotw-backend:v1}
+    image: ${DOCKER_IMAGE}
     container_name: cotw-backend
     restart: unless-stopped
     depends_on:
@@ -35,8 +35,8 @@ services:
       # 데이터베이스 설정
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cotw
-      SPRING_DATASOURCE_USERNAME: cotw_user
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-cotw0319}
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       
       # JPA 설정
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
@@ -48,12 +48,12 @@ services:
       # AWS 설정
       AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
       AWS_SECRET_KEY: ${AWS_SECRET_KEY}
-      AWS_REGION: ${AWS_REGION:-ap-southeast-2}
+      AWS_REGION: ${AWS_REGION}
       AWS_S3_BUCKET: ${AWS_S3_BUCKET}
       
       # Toss Payment 설정
       TOSS_SECRET_KEY: ${TOSS_SECRET_KEY}
-      TOSS_API_URL: ${TOSS_API_URL:-https://api.tosspayments.com}
+      TOSS_API_URL: ${TOSS_API_URL}
       
       # JWT 설정
       JWT_SECRET: ${JWT_SECRET}
@@ -66,6 +66,10 @@ services:
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      
+      # URL 설정
+      BACKEND_URL: ${BACKEND_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
     ports:
       - "8080:8080"
     volumes:

@@ -37,7 +37,7 @@ spring:
             client-name: Google
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-            redirect-uri: "http://43.203.46.221:8080/login/oauth2/code/google"
+            redirect-uri: "${BACKEND_URL}/login/oauth2/code/google"
             authorization-grant-type: authorization_code
             scope:
               - profile
@@ -46,7 +46,7 @@ spring:
             client-name: Naver
             client-id: ${NAVER_CLIENT_ID}
             client-secret: ${NAVER_CLIENT_SECRET}
-            redirect-uri: "http://43.203.46.221:8080/login/oauth2/code/callback"
+            redirect-uri: "${BACKEND_URL}/login/oauth2/code/callback"
             authorization-grant-type: authorization_code
             scope:
               - name
@@ -58,7 +58,7 @@ spring:
             client-authentication-method: client_secret_post
             client-id: ${KAKAO_CLIENT_ID}
             client-secret: ${KAKAO_CLIENT_SECRET}
-            redirect-uri: "http://43.203.46.221:8080/login/oauth2/code/kakao"
+            redirect-uri: "${BACKEND_URL}/login/oauth2/code/kakao"
             authorization-grant-type: authorization_code
             scope:
               - account_email
@@ -88,7 +88,8 @@ jwt:
   secret: ${JWT_SECRET}
 
 app:
-  front-redirect-base: https://frontend-five-pi-42.vercel.app
+  front-redirect-base: ${FRONTEND_URL}
+  frontend-url: ${FRONTEND_URL}
 
 toss:
   secretKey: ${TOSS_SECRET_KEY}

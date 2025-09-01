@@ -19,7 +19,7 @@ public class PaymentController {
 
     private final PaymentService paymentService;
     
-    @Value("${app.front-redirect-base:http://localhost:5173}")
+    @Value("${app.front-redirect-base}")
     private String frontendBaseUrl;
 
     @PostMapping
