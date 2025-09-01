@@ -35,7 +35,7 @@ services:
       # 데이터베이스 설정
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cotw
-      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_USERNAME: ${DB_ID}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       
       # JPA 설정
@@ -70,6 +70,12 @@ services:
       # URL 설정
       BACKEND_URL: ${BACKEND_URL}
       FRONTEND_URL: ${FRONTEND_URL}
+      
+      # DB 설정
+      DB_ID: ${DB_ID}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: cotw
     ports:
       - "8080:8080"
     volumes:

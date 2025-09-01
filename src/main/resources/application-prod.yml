@@ -11,8 +11,8 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:cotw}
-    username: ${DB_ID:cotw_user}
-    password: ${DB_PASSWORD:cotw_password}
+    username: ${DB_ID}
+    password: ${DB_PASSWORD}
 
   jpa:
     properties:

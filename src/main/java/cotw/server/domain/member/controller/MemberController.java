@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.Duration;
 
 @RestController
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class MemberController {
 
