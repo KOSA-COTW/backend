@@ -44,7 +44,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("""
            SELECT p
            FROM Post p
-           WHERE p.isPublic = true
+           WHERE p.visibilityStatus = 'APPROVED'
              AND (:category IS NULL OR p.category = :category)
            ORDER BY 
              CASE WHEN :sortDirection = 'ASC' THEN p.createdAt END ASC,
@@ -64,7 +64,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     """)
     int anonymizeAuthorByMemberIds(@Param("memberIds") List<Long> memberIds,
                                    @Param("deletedUser") Member deletedUser);
-}
 
     // 카테고리만 필터링 (상태 상관없이)
     Page<Post> findByCategory(Category category, Pageable pageable);

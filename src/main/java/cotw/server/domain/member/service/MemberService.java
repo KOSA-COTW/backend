@@ -50,7 +50,6 @@ public class MemberService {
     private final PostRepository postRepository;
     private final PostService postService;
     private final PaymentOrderRepository paymentOrderRepository;
-    private final PaymentLedgerRepository paymentLedgerRepository;
 
 
 

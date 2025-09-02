@@ -41,6 +41,5 @@ public interface PaymentLedgerRepository extends JpaRepository<PaymentLedger, Lo
     Long sumDoneByDateRange(@Param("start") LocalDateTime start,
                             @Param("end") LocalDateTime end);
 
-    List<PaymentLedger> findByMemberIdAndStatus(Long memberId, PaymentStatus status);
 
 }
