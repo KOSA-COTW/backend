@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,6 +27,9 @@ public interface CommentReportRepository extends JpaRepository<CommentReport, Lo
     // 댓글의 총 신고 수
     long countByCommentId(Long commentId);
 
+
+    void deleteByMemberIdIn(Collection<Long> memberIds);
+
     @Query("select r.reason, count(r) from CommentReport r where r.comment.id = :commentId group by r.reason")
     List<Object[]> countByReason(@Param("commentId") Long commentId);
 
@@ -33,4 +37,5 @@ public interface CommentReportRepository extends JpaRepository<CommentReport, Lo
     Optional<LocalDateTime> findLastReportedAt(@Param("commentId") Long commentId);
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
 }

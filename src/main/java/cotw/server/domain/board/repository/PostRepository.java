@@ -2,10 +2,12 @@ package cotw.server.domain.board.repository;
 
 import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Post;
+import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.board.entity.PostVisibility;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -37,6 +39,34 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // 카테고리 + 상태별 조회 (단순 메서드)
     Page<Post> findByCategoryAndVisibilityStatus(Category category, PostVisibility visibilityStatus, Pageable pageable);
 
+
+    // 관리자용: 공개 게시글 조회 (카테고리 필터, 정렬, 페이징)
+    @Query("""
+           SELECT p
+           FROM Post p
+           WHERE p.isPublic = true
+             AND (:category IS NULL OR p.category = :category)
+           ORDER BY 
+             CASE WHEN :sortDirection = 'ASC' THEN p.createdAt END ASC,
+             CASE WHEN :sortDirection = 'DESC' THEN p.createdAt END DESC
+           """)
+    Page<Post> findAdminOnlyPublicPosts(
+        @Param("category") Category category, 
+        @Param("sortDirection") String sortDirection,
+        Pageable pageable
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        update Post p
+           set p.author = :deletedUser
+         where p.author.id in :memberIds
+    """)
+    int anonymizeAuthorByMemberIds(@Param("memberIds") List<Long> memberIds,
+                                   @Param("deletedUser") Member deletedUser);
+}
+
     // 카테고리만 필터링 (상태 상관없이)
     Page<Post> findByCategory(Category category, Pageable pageable);
 }
+

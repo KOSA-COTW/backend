@@ -1,5 +1,12 @@
 package cotw.server.domain.payment.repository;
 
+
+import cotw.server.domain.member.entity.Member;
+import cotw.server.domain.payment.entity.PaymentOrder;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import cotw.server.domain.admin.dto.response.AdminTopDonorResponse;
 import cotw.server.domain.payment.entity.PaymentOrder;
 import org.springframework.data.domain.PageRequest;
@@ -7,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import cotw.server.domain.payment.entity.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -21,7 +29,16 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     List<PaymentOrder> findByPostIdOrderByCreatedAtDesc(Long postId);
     boolean existsByOrderId(String orderId);
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        update PaymentOrder p
+           set p.member = :deletedUser
+         where p.member.id in :memberIds
+    """)
+    int reassignMemberToDeleted(@Param("memberIds") List<Long> memberIds,
+                                @Param("deletedUser") Member deletedUser);
 
+           
     // ===== 관리자 통계 =====
 
     /** 총 기부액 (성공 건만: PaymentStatus.DONE) */
@@ -50,4 +67,5 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     default List<AdminTopDonorResponse> findTopDonors(int limit) {
         return findTopDonors(PageRequest.of(0, limit));
     }
+
 }

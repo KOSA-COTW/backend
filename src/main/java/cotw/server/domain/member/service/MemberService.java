@@ -2,17 +2,24 @@ package cotw.server.domain.member.service;
 
 import cotw.server.common.jwt.CustomUserDetails;
 import cotw.server.common.jwt.service.RefreshTokenService;
+import cotw.server.domain.board.repository.PostRepository;
+import cotw.server.domain.board.service.PostService;
+import cotw.server.domain.comment.repository.CommentLikeRepository;
+import cotw.server.domain.comment.repository.CommentReportRepository;
+import cotw.server.domain.comment.repository.CommentRepository;
 import cotw.server.domain.member.Dto.request.SignUpRequestDTO;
 import cotw.server.domain.member.Dto.response.ShowInfoResponseDTO;
 import cotw.server.domain.member.Dto.response.SignUpResponseDTO;
 import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
+import cotw.server.domain.member.repository.MemberEmailProjection;
 import cotw.server.domain.member.repository.MemberRepository;
 import cotw.server.domain.payment.entity.PaymentLedger;
 import cotw.server.domain.payment.entity.PaymentStatus;
 import cotw.server.domain.payment.repository.PaymentLedgerRepository;
 
+import cotw.server.domain.payment.repository.PaymentOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -20,7 +27,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,7 +42,17 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
+    private final PaymentLedgerRepository paymentLedgerRepository;  // 결제 내역 레포지토리
+
+    private final CommentRepository commentRepository;
+    private final CommentLikeRepository commentLikeRepository;
+    private final CommentReportRepository commentReportRepository;
+    private final PostRepository postRepository;
+    private final PostService postService;
+    private final PaymentOrderRepository paymentOrderRepository;
     private final PaymentLedgerRepository paymentLedgerRepository;
+
+
 
     public SignUpResponseDTO signUpMember(SignUpRequestDTO signUpRequestDTO) {
         // 이메일 유무 확인
@@ -41,7 +60,11 @@ public class MemberService {
             throw new IllegalArgumentException("email already used");
 
         String encodedPassword = passwordEncoder.encode(signUpRequestDTO.password());
-        Member newMember = signUpRequestDTO.toEntity(signUpRequestDTO.name(), signUpRequestDTO.nickname(), signUpRequestDTO.email(), encodedPassword, Role.USER);
+
+        int randomInt = (int) (Math.random() * 3) + 1;
+        String pictureUrl = "/profile/profile"+ randomInt +".png";
+
+        Member newMember = signUpRequestDTO.toEntity(signUpRequestDTO.name(), signUpRequestDTO.nickname(), signUpRequestDTO.email(), encodedPassword, pictureUrl, Role.USER);
 
         memberRepository.save(newMember);
 
@@ -63,10 +86,11 @@ public class MemberService {
         );
 
 
-        List<PaymentLedger> paymentLedgers = paymentLedgerRepository.findByMemberIdAndStatus(customUserDetails.getMemberId(), PaymentStatus.DONE);
+        List<PaymentLedger> payments = paymentLedgerRepository.findByMemberIdAndStatus(customUserDetails.getMemberId(), PaymentStatus.DONE);
 
-        int oneTimeCount = paymentLedgers.size();
-        Long totalDonation = paymentLedgers.stream().mapToLong(PaymentLedger::getAmount).sum();
+        int oneTimeCount = payments.size();
+        Long totalDonation = payments.stream().mapToLong(PaymentLedger::getAmount).sum();
+
 
         ShowInfoResponseDTO responseDTO = ShowInfoResponseDTO.from(member, oneTimeCount, totalDonation);
         return responseDTO;
@@ -111,16 +135,31 @@ public class MemberService {
                 (Pageable) PageRequest.of(0, chunkSize));
         if (ids.isEmpty()) return 0;
 
+        // 0) 대체 사용자(탈퇴 사용자) 참조
+        final Long DELETED_USER_ID = 1L; // 운영에서 실제 ID로 설정
+        Member deletedUser = memberRepository.getReferenceById(DELETED_USER_ID);
+
         // 1) 행위 엔티티 정리(예: 좋아요/신고) — 벌크 삭제 메서드 필요
-        // likeRepo.deleteByMemberIdIn(ids);
-        // reportRepo.deleteByMemberIdIn(ids);
+        commentLikeRepository.deleteByMemberIdIn(ids);
+        commentReportRepository.deleteByMemberIdIn(ids);
 
         // 2) 글/댓글은 익명화(권장) 또는 삭제 중 정책 선택
-        // postRepo.anonymizeAuthorByMemberIds(ids, DELETED_USER_ID);
-        // commentRepo.anonymizeAuthorByMemberIds(ids, DELETED_USER_ID);
+        postRepository.anonymizeAuthorByMemberIds(ids, deletedUser);
+        commentRepository.anonymizeAuthorByMemberIds(ids, deletedUser);
+
+        // 2-1) 결제 주문도 FK 치환
+        paymentOrderRepository.reassignMemberToDeleted(ids, deletedUser);
+
+        // (선택) Participant 등 다른 FK도 정책에 따라 삭제/치환
+        // participantRepository.deleteByMemberIdIn(ids);
+        // 또는 participantRepository.reassignMemberToDeleted(ids, deletedUser);
 
         // 3) refresh 전부 제거
-        // for (Long id : ids) { refreshTokenService.revokeAllByUser(findEmailById(id)); } // 구현 방식에 맞게 적용
+        List<MemberEmailProjection> emails = memberRepository.findEmailsByIdIn(ids);
+        for (MemberEmailProjection p : emails) {
+            // (a) 기존 DB/외부 저장소에 있는 refresh 토큰 정리
+            refreshTokenService.revokeAllByUser(p.getEmail());
+        }
 
         // 4) 마지막으로 회원 삭제
         memberRepository.deleteByIdIn(ids);
@@ -142,16 +181,26 @@ public class MemberService {
         }
     }
 
-    public void editImage(CustomUserDetails customUserDetails, String imageUrl) {
-        Member member = memberRepository.findByEmail(customUserDetails.getUsername()).orElseThrow(  );
+    public void editImage(CustomUserDetails customUserDetails, MultipartFile file) {
+        Member member = memberRepository.findByEmail(customUserDetails.getUsername()).orElseThrow(
+                () -> new IllegalArgumentException("user not found")
+        );
         if(member == null) throw new AccessDeniedException("member not found");
 
+        String imageUrl = null;
+        try {
+            imageUrl = postService.upload(file);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         member.setPictureUrl(imageUrl);
         memberRepository.save(member);
     }
 
     public void editNickname(CustomUserDetails customUserDetails, String newNickname) {
-        Member member = memberRepository.findByEmail(customUserDetails.getUsername()).orElseThrow(  );
+        Member member = memberRepository.findByEmail(customUserDetails.getUsername()).orElseThrow(
+                () -> new IllegalArgumentException("user not found")
+        );
         if(member == null) throw new AccessDeniedException("member not found");
 
         member.setNickname(newNickname);

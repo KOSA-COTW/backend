@@ -2,6 +2,7 @@ package cotw.server.domain.member.entity;
 
 import cotw.server.common.BaseEntity;
 import cotw.server.domain.board.entity.Comment;
+import cotw.server.domain.board.entity.Participant;
 import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.comment.entity.CommentLike;
 import cotw.server.domain.comment.entity.CommentReport;
@@ -94,6 +95,10 @@ public class Member extends BaseEntity {
     @OneToMany(mappedBy = "member")
     private List<PaymentOrder> paymentOrders = new ArrayList<>();
 
+    @Builder.Default
+    @OneToMany(mappedBy = "member")
+    private List<Participant> participant = new ArrayList<>();
+
     // == 팩토리 ==
     public static Member ofLocal(String name, String email, String passwordHash) {
         Member m = new Member();
@@ -118,9 +123,10 @@ public class Member extends BaseEntity {
     }
 
     // == 소셜 동기화 ==
-    public Member update(String name, String email) {
+    public Member update(String name, String email, String profileUrl) {
         if (name != null) this.name = name;
         if (email != null) this.email = email.toLowerCase();
+        if (profileUrl != null) this.pictureUrl = profileUrl;
 
         return this;
     }

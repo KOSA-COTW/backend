@@ -38,6 +38,7 @@ public class JwtFilter extends OncePerRequestFilter {
             new AntPathRequestMatcher("/reissue", "POST"),
             new AntPathRequestMatcher("/oauth2/authorization/**"),   // 소셜 로그인 시작 URL
             new AntPathRequestMatcher("/login/oauth2/code/**"),       // 콜백 URL
+            new AntPathRequestMatcher("/public/donation-total"),
             request -> "OPTIONS".equalsIgnoreCase(request.getMethod())
     );
 

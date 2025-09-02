@@ -2,10 +2,13 @@
 package cotw.server.domain.comment.repository;
 
 import cotw.server.domain.board.entity.Comment;
+import cotw.server.domain.member.entity.Member;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
+
+import java.util.List;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 
@@ -95,6 +98,16 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     """)
     int decrementLikeCount(@Param("commentId") Long commentId);
 
+
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        update Comment c
+           set c.member = :deletedUser
+         where c.member.id in :memberIds
+    """)
+    int anonymizeAuthorByMemberIds(@Param("memberIds") List<Long> memberIds,
+                                   @Param("deletedUser") Member deletedUser);
 
     // ====== 관리자 전용 조회 ======
     // 상태 정의
