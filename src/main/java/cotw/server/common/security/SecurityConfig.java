@@ -97,7 +97,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/", "/auth/login", "/auth/signup", "/reissue").permitAll()
                 .requestMatchers("/api/payments/success", "/api/payments/confirm").permitAll()
-                .requestMatchers(HttpMethod.GET, "/info").permitAll()
+                .requestMatchers(HttpMethod.GET, "/info", "/public/donation-total").permitAll()
                 // 소프트 삭제 관련 요청
                 .requestMatchers(HttpMethod.POST, "/deactivate", "/recover").permitAll()
 

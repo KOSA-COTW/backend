@@ -2,9 +2,11 @@ package cotw.server.domain.board.repository;
 
 import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Post;
+import cotw.server.domain.member.entity.Member;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -57,4 +59,13 @@ public interface PostRepository extends JpaRepository<Post, Long> {
         @Param("sortDirection") String sortDirection,
         Pageable pageable
     );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        update Post p
+           set p.author = :deletedUser
+         where p.author.id in :memberIds
+    """)
+    int anonymizeAuthorByMemberIds(@Param("memberIds") List<Long> memberIds,
+                                   @Param("deletedUser") Member deletedUser);
 }

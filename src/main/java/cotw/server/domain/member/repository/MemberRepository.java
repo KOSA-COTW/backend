@@ -20,8 +20,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findByProviderAndProviderId(ProviderType provider, String providerId);
 
-    Optional<Object> findByIdAndPassword(Long id, String password);
-
     @Query("""
        select m.id from Member m
        where m.status = 'DELETED'
@@ -34,4 +32,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query("delete from Member m where m.id in :ids")
     void deleteByIdIn(@Param("ids") List<Long> ids);
 
+    Optional<Member> findEmailById(Long id);
+
+    @Query("select m.id as id, m.email as email from Member m where m.id in :ids")
+    List<MemberEmailProjection> findEmailsByIdIn(@Param("ids") List<Long> ids);
 }

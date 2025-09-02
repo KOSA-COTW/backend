@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 
 
 public interface CommentReportRepository extends JpaRepository<CommentReport, Long> {
@@ -22,4 +23,6 @@ public interface CommentReportRepository extends JpaRepository<CommentReport, Lo
 
     // 댓글의 총 신고 수
     long countByCommentId(Long commentId);
+
+    void deleteByMemberIdIn(Collection<Long> memberIds);
 }

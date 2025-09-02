@@ -20,12 +20,13 @@ public record SignUpRequestDTO(
         String nickname
 ) {
 
-    public Member toEntity(String name,String nickname, String email, String password, Role role) {
+    public Member toEntity(String name,String nickname, String email, String password,String pictureUrl, Role role) {
         return Member.builder()
                 .name(name)
                 .nickname(nickname)
                 .email(email)
                 .password(password)
+                .pictureUrl(pictureUrl)
                 .role(role)
                 .build();
     }

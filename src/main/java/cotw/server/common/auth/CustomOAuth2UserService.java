@@ -52,11 +52,12 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         String providerId = info.id();    // 구글=sub, 카카오=id, 네이버=response.id 로 표준화된 값
         String email = info.email();      // (없을 수도 있음)
         String normalizedEmail = email == null ? null : email.trim().toLowerCase();
+        String profileUrl = info.picture();
 
         // 2) (provider, providerId)로 먼저 조회 → 있으면 정보만 갱신
         Member member = memberRepository.findByProviderAndProviderId(provider, providerId)
                 .map(u -> {
-                    u.update(info.name(), email);
+                    u.update(info.name(), email, profileUrl);
                     return memberRepository.save(u);
                 })
                 .orElseGet(() -> {
@@ -66,7 +67,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
                                 .map(existing -> {
                                     // 기존 일반회원/다른 소셜 → 현재 소셜로 연결
                                     existing.linkSocial(provider, providerId);
-                                    existing.update(info.name(), email);
+                                    existing.update(info.name(), email, profileUrl);
                                     return memberRepository.save(existing);
                                 })
                                 .orElseGet(() ->
@@ -89,7 +90,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         }
 
         // 필요 시 프로필 동기화
-        member.update(getName(oAuth2User), normalizedEmail);
+        member.update(getName(oAuth2User), normalizedEmail, profileUrl);
         memberRepository.save(member);
 
         // 3) 권한 및 Principal 반환
