@@ -50,6 +50,8 @@ public class MemberService {
     private final PostRepository postRepository;
     private final PostService postService;
     private final PaymentOrderRepository paymentOrderRepository;
+    private final PaymentLedgerRepository paymentLedgerRepository;
+
 
 
     public SignUpResponseDTO signUpMember(SignUpRequestDTO signUpRequestDTO) {
@@ -83,10 +85,12 @@ public class MemberService {
                 () -> new IllegalArgumentException("Invalid member")
         );
 
+
         List<PaymentLedger> payments = paymentLedgerRepository.findByMemberIdAndStatus(customUserDetails.getMemberId(), PaymentStatus.DONE);
 
         int oneTimeCount = payments.size();
         Long totalDonation = payments.stream().mapToLong(PaymentLedger::getAmount).sum();
+
 
         ShowInfoResponseDTO responseDTO = ShowInfoResponseDTO.from(member, oneTimeCount, totalDonation);
         return responseDTO;

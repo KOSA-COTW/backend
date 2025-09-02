@@ -18,6 +18,7 @@ public interface PaymentLedgerRepository extends JpaRepository<PaymentLedger, Lo
     List<PaymentLedger> findByPostIdOrderByCreatedAtDesc(Long postId);
     Optional<PaymentLedger> findByOrderId(String orderId);
 
+
     List<PaymentLedger> findByMemberIdAndStatus(Long memberId, PaymentStatus status);
 
     Optional<PaymentLedger> findByPaymentKey(String paymentKey);
@@ -39,4 +40,7 @@ public interface PaymentLedgerRepository extends JpaRepository<PaymentLedger, Lo
            """)
     Long sumDoneByDateRange(@Param("start") LocalDateTime start,
                             @Param("end") LocalDateTime end);
+
+    List<PaymentLedger> findByMemberIdAndStatus(Long memberId, PaymentStatus status);
+
 }

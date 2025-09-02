@@ -4,6 +4,7 @@ import cotw.server.domain.board.entity.Category;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Getter
@@ -14,4 +15,5 @@ public class PostUpdateRequestDto {
     private Category category;
     private int amount;
     private List<String> imageUrls;
+    private LocalDate deadline;
 }

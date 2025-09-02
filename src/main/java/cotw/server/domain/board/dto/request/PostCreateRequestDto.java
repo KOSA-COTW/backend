@@ -3,6 +3,7 @@ package cotw.server.domain.board.dto.request;
 import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Image;
 import cotw.server.domain.board.entity.Post;
+import cotw.server.domain.board.entity.PostVisibility;
 import cotw.server.domain.member.entity.Member;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -47,7 +48,7 @@ public class PostCreateRequestDto {
                 .amount(amount)
                 .currentAmount(0)
                 .author(author)
-                .isPublic(false)
+                .visibilityStatus(PostVisibility.PRIVATE)
                 .deadline(deadline)
                 .build();
     }

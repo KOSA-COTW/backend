@@ -7,7 +7,9 @@ import cotw.server.domain.comment.service.CommentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -34,16 +36,27 @@ public class CommentController {
     @GetMapping
     public ResponseEntity<Page<CommentResponse>> list(
             @RequestParam Long postId,
-            @AuthenticationPrincipal(expression = "id") Long viewerId,
+            @AuthenticationPrincipal cotw.server.common.jwt.CustomUserDetails principal,
             Authentication authentication,
             @RequestParam(defaultValue = "LATEST") String sort,
-            @PageableDefault(size = 20) Pageable pageable
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
+        Long viewerId = (principal != null) ? principal.getId() : null;
         boolean admin = isAdmin(authentication);
-        Page<CommentResponse> page = "LIKE".equalsIgnoreCase(sort)
-                ? commentService.listByLike(postId, viewerId, admin, pageable)
-                : commentService.listLatest(postId, viewerId, admin, pageable);
-        return ResponseEntity.ok(page);
+
+        Page<CommentResponse> pageResult;
+        if ("LIKE".equalsIgnoreCase(sort)) {
+            // 좋아요순 (likeCount desc, id desc)
+            Pageable realPageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("likeCount"), Sort.Order.desc("id")));
+            pageResult = commentService.listByLike(postId, viewerId, admin, realPageable);
+        } else {
+            // 최신순 (createdAt desc, id desc)
+            Pageable realPageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+            pageResult = commentService.listLatest(postId, viewerId, admin, realPageable);
+        }
+
+        return ResponseEntity.ok(pageResult);
     }
 
     /** 댓글 수정(본인만) */

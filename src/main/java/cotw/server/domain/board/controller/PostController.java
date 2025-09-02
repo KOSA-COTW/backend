@@ -5,12 +5,11 @@ import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
-import cotw.server.domain.board.entity.Category;
+import cotw.server.domain.board.entity.PostVisibility;
 import cotw.server.domain.board.service.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,7 +28,7 @@ public class PostController {
     /**
      * 게시글 생성
      * - 로그인한 사용자만 가능
-     * - 작성 시 기본 isPublic = false (비공개)
+     * - 기본 상태: PRIVATE
      */
     @PostMapping
     public ResponseEntity<?> createPost(@AuthenticationPrincipal CustomUserDetails principal,
@@ -39,25 +38,24 @@ public class PostController {
     }
 
     /**
-     * 내가 쓴 모든 게시글 목록 조회
-     * - 비공개/공개 상관없이 본인이 작성한 모든 글 조회
+     * 내가 쓴 모든 게시글 조회
+     * - 본인 글은 PRIVATE, PENDING, APPROVED, REJECTED 전부 조회 가능
      */
     @GetMapping("/me")
     public ResponseEntity<List<PostResponseDto>> getMyPosts(
             @AuthenticationPrincipal CustomUserDetails principal) {
-        List<PostResponseDto> posts = postService.getMyPosts(principal.getUsername());
-        return ResponseEntity.ok(posts);
+        return ResponseEntity.ok(postService.getMyPosts(principal.getUsername()));
     }
 
     /**
      * 특정 게시글 조회
-     * - 공개글: 누구나 조회 가능
-     * - 비공개글: 작성자 본인 or 관리자만 조회 가능
+     * - APPROVED: 누구나 조회 가능
+     * - PRIVATE/PENDING/REJECTED: 작성자 본인 or 관리자만 조회 가능
      */
     @GetMapping("/{postId}")
     public ResponseEntity<PostResponseDto> getPost(
             @PathVariable Long postId,
-            @AuthenticationPrincipal CustomUserDetails principal // null일 수 있음
+            @AuthenticationPrincipal CustomUserDetails principal // null 가능
     ) {
         String viewerEmail = (principal == null) ? null : principal.getUsername();
         return ResponseEntity.ok(postService.getPostForView(postId, viewerEmail));
@@ -65,7 +63,7 @@ public class PostController {
 
     /**
      * 게시글 삭제
-     * - 작성자 본인 or 관리자만 가능
+     * - 작성자 본인 or 관리자 가능
      */
     @DeleteMapping("/{postId}")
     public ResponseEntity<Void> deletePost(@PathVariable Long postId,
@@ -76,83 +74,28 @@ public class PostController {
 
     /**
      * 게시글 수정
-     * - 작성자 본인 or 관리자만 가능
+     * - 작성자 본인 or 관리자 가능
+     * - APPROVED 상태에서 수정 시 PENDING으로 변경
      */
     @PatchMapping("/{postId}")
-    public ResponseEntity<Void> updatePost(@AuthenticationPrincipal CustomUserDetails principal, @PathVariable Long postId,
+    public ResponseEntity<Void> updatePost(@AuthenticationPrincipal CustomUserDetails principal,
+                                           @PathVariable Long postId,
                                            @RequestBody PostUpdateRequestDto dto) {
         postService.updatePost(postId, dto, principal.getUsername());
         return ResponseEntity.ok().build();
     }
 
     /**
-     * 게시글 공개 여부 변경
-     * - 관리자만 가능
-     * - 작성 시 기본 false → 관리자가 true로 변경하면 공개됨
-     */
-    @PatchMapping("/visibility")
-    public ResponseEntity<Void> changePostVisibility(
-            @AuthenticationPrincipal CustomUserDetails principal,
-            @RequestBody Map<String, Object> body) {
-        @SuppressWarnings("unchecked")
-        List<Integer> postIds = (List<Integer>) body.get("postIds");
-        boolean isPublic = (Boolean) body.get("isPublic");
-
-        postService.changePostsVisibility(
-                postIds.stream().map(Long::valueOf).toList(),
-                isPublic,
-                principal.getUsername()
-        );
-        return ResponseEntity.ok().build();
-    }
-
-    /**
-     * 공개된 모든 게시글 목록 조회
-     * - 로그인 여부와 관계없이 접근 가능
-     * - 비공개 게시글은 제외하고, isPublic = true 인 게시글만 반환
+     * 승인된 게시글 목록 조회
+     * - 누구나 접근 가능
      */
     @GetMapping
-    public ResponseEntity<List<PostListResponseDto>> getAllPublicPosts() {
-        List<PostListResponseDto> posts = postService.getAllPublicPosts();
-        return ResponseEntity.ok(posts);
+    public ResponseEntity<List<PostListResponseDto>> getApprovedPosts() {
+        return ResponseEntity.ok(postService.getPostsByStatus(PostVisibility.APPROVED));
     }
 
     /**
-     * 관리자용: 비공개 게시글 조회
-     * - 관리자만 접근 가능
-     * - 페이징, 정렬, 카테고리 필터링 지원
-     */
-    @GetMapping("/admin")
-    public ResponseEntity<List<PostListResponseDto>> getAdminOnlyPosts(
-            @RequestParam(defaultValue = "10") Integer limit,
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "DESC") String sortDirection,
-            @RequestParam(required = false) Category category) {
-        
-        List<PostListResponseDto> posts = postService.getAdminOnlyPosts(limit, page, sortDirection, category);
-        return ResponseEntity.ok(posts);
-    }
-
-    /**
-     * 관리자용: 공개 게시글 조회
-     * - 관리자만 접근 가능
-     * - 페이징, 정렬, 카테고리 필터링 지원
-     * - isPublic = true인 게시글만 조회
-     */
-    @GetMapping("/admin/public")
-    public ResponseEntity<List<PostListResponseDto>> getAdminOnlyPublicPosts(
-            @RequestParam(defaultValue = "10") Integer limit,
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "DESC") String sortDirection,
-            @RequestParam(required = false) Category category) {
-        
-        List<PostListResponseDto> posts = postService.getAdminOnlyPublicPosts(limit, page, sortDirection, category);
-        return ResponseEntity.ok(posts);
-    }
-
-    /**
-     * 메인 화면용: 공개 + 마감 임박 6개
-     * - 누구나 접근 가능
+     * 메인 화면용: 승인된 글 중 마감 임박 6개
      */
     @GetMapping("/home")
     public ResponseEntity<List<PostListResponseDto>> getHomePosts() {
@@ -167,4 +110,25 @@ public class PostController {
         String imageUrl = postService.upload(file);
         return Map.of("url", imageUrl);
     }
+
+    // 승인 요청
+    @PostMapping("/{postId}/request-approval")
+    public ResponseEntity<Void> requestApproval(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal CustomUserDetails principal
+    ) {
+        postService.requestApproval(postId, principal.getMember());
+        return ResponseEntity.ok().build();
+    }
+
+    // 승인 요청 취소
+    @PostMapping("/{postId}/cancel-approval")
+    public ResponseEntity<Void> cancelApproval(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal CustomUserDetails principal
+    ) {
+        postService.cancelApproval(postId, principal.getMember());
+        return ResponseEntity.ok().build();
+    }
+
 }
