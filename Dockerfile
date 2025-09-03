@@ -3,7 +3,7 @@
 # 1단계: 빌드 스테이지
 FROM eclipse-temurin:21-jdk AS builder
 
-WORKDIR /backend
+WORKDIR /app
 
 # Gradle Wrapper와 빌드 파일 복사
 COPY gradlew .
@@ -22,7 +22,7 @@ RUN ./gradlew bootJar --no-daemon
 # 2단계: 실행 스테이지
 FROM eclipse-temurin:21-jre
 
-WORKDIR /backend
+WORKDIR /app
 
 # 시스템 패키지 업데이트 및 필수 도구 설치
 RUN apt-get update && \
@@ -35,15 +35,11 @@ RUN useradd --create-home --shell /bin/bash app
 USER app
 
 # 빌드된 JAR 파일 복사
-COPY --from=builder /backend/build/libs/*.jar app.jar
+COPY --from=builder /app/build/libs/*.jar app.jar
 
 # 환경변수 설정
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
 ENV SPRING_PROFILES_ACTIVE=prod
-
-# 헬스체크 추가
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:8080/actuator/health || exit 1
 
 # 포트 노출
 EXPOSE 8080

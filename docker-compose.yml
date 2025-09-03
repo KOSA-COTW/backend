@@ -2,11 +2,12 @@ services:
   # PostgreSQL 데이터베이스
   postgres:
     image: postgres:15-alpine
+    env_file: ./.env
     container_name: cotw-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: cotw
-      POSTGRES_USER: postgres
+      POSTGRES_USER: ${DB_ID}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     ports:
@@ -23,7 +24,8 @@ services:
 
   # Spring Boot 애플리케이션 (Docker Hub 이미지 사용)
   app:
-    image: ${DOCKER_IMAGE}
+    image: ${BACKEND_IMAGE}
+    env_file: ./.env
     container_name: cotw-backend
     restart: unless-stopped
     depends_on:
@@ -89,9 +91,23 @@ services:
       retries: 3
       start_period: 40s
 
+  # Vue
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    env_file: ./.env
+    container_name: cotw-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    depends_on:
+      - app
+    networks:
+      - cotw-network
+
   # Redis 캐시
   redis:
     image: redis:7-alpine
+    env_file: ./.env
     container_name: cotw-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
