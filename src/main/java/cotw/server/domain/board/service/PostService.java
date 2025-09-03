@@ -10,10 +10,12 @@ import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Image;
 import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.board.entity.PostVisibility;
+import cotw.server.domain.board.exception.PostHasPaymentHistoryException;
 import cotw.server.domain.board.repository.PostRepository;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
+import cotw.server.domain.payment.repository.PaymentOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -35,6 +37,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
+    private final PaymentOrderRepository paymentOrderRepository;
     private final AmazonS3Client s3Client;
 
     @Value("${aws.s3.bucket}")
@@ -143,6 +146,7 @@ public class PostService {
     /**
      * 게시글 삭제
      * - 작성자 or 관리자 가능
+     * - 결제 내역이 있는 게시글은 삭제 불가
      */
     @Transactional
     public void deletePost(Long postId, String requesterEmail) {
@@ -155,6 +159,11 @@ public class PostService {
         if (!post.getAuthor().getEmail().equals(requesterEmail) &&
                 requester.getRole() != Role.ADMIN) {
             throw new AccessDeniedException("삭제 권한이 없습니다.");
+        }
+
+        // 결제 내역이 있는지 확인
+        if (paymentOrderRepository.existsByPostId(postId)) {
+            throw new PostHasPaymentHistoryException("결제내역이 있는 게시물은 삭제할 수 없습니다.");
         }
 
         postRepository.delete(post);
