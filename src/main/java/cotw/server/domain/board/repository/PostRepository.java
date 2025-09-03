@@ -36,26 +36,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
            """)
     List<Post> findHomePosts(@Param("today") LocalDate today, Pageable pageable);
 
-    // 카테고리 + 상태별 조회 (단순 메서드)
-    Page<Post> findByCategoryAndVisibilityStatus(Category category, PostVisibility visibilityStatus, Pageable pageable);
-
-
-    // 관리자용: 공개 게시글 조회 (카테고리 필터, 정렬, 페이징)
-    @Query("""
-           SELECT p
-           FROM Post p
-           WHERE p.visibilityStatus = 'APPROVED'
-             AND (:category IS NULL OR p.category = :category)
-           ORDER BY 
-             CASE WHEN :sortDirection = 'ASC' THEN p.createdAt END ASC,
-             CASE WHEN :sortDirection = 'DESC' THEN p.createdAt END DESC
-           """)
-    Page<Post> findAdminOnlyPublicPosts(
-        @Param("category") Category category, 
-        @Param("sortDirection") String sortDirection,
-        Pageable pageable
-    );
-
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         update Post p
@@ -65,7 +45,5 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     int anonymizeAuthorByMemberIds(@Param("memberIds") List<Long> memberIds,
                                    @Param("deletedUser") Member deletedUser);
 
-    // 카테고리만 필터링 (상태 상관없이)
-    Page<Post> findByCategory(Category category, Pageable pageable);
 }
 
