@@ -72,6 +72,9 @@ public class Comment extends BaseEntity {
     @Builder.Default
     private Long version = 0L;
 
+    @Column(name = "admin_memo", length = 500)
+    private String adminMemo;
+
     // ===== 도메인 로직 =====
 
     /** 삭제 여부 */

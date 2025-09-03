@@ -285,5 +285,90 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
        and c.moderationDueAt < CURRENT_TIMESTAMP
 """)
     long countAdminExpired();
+    // ===== 관리자 통합 조회 (동적 파라미터) =====
+    // - status: ALL | HIDDEN | PENDING | EXPIRED
+    // - reportedOnly: true면 신고가 있는 댓글만
+    // - kw: content / 작성자 이메일 / 게시글 제목 부분검색 (소문자 like)
+    // - reason: 신고 사유 필터
+    // - from/to: 댓글 생성일 범위
+    @EntityGraph(attributePaths = {"member", "post"})
+    @Query(value = """
+        select c
+          from Comment c
+          left join c.member m
+          left join c.post p
+         where 1=1
+           and ( :kw is null
+                 or lower(c.content) like :kw
+                 or (m.email is not null and lower(m.email) like :kw)
+                 or (p.title is not null and lower(p.title) like :kw)
+               )
+           and ( :reason is null
+                 or exists (select 1 from CommentReport r where r.comment.id = c.id and r.reason = :reason)
+               )
+           and ( :from is null or c.createdAt >= :from )
+           and ( :to   is null or c.createdAt <= :to )
+           and (
+                  :status = 'ALL'
+               or (:status = 'HIDDEN'  and c.isPublic = false)
+               or (:status = 'PENDING' and c.moderationDueAt is not null and c.moderationDueAt >= CURRENT_TIMESTAMP)
+               or (:status = 'EXPIRED' and c.moderationDueAt is not null and c.moderationDueAt <  CURRENT_TIMESTAMP)
+               )
+           and ( :reportedOnly is null
+                 or :reportedOnly = false
+                 or ( :reportedOnly = true and c.reportCount > 0 )
+               )
+        """,
+            countQuery = """
+        select count(c)
+          from Comment c
+          left join c.member m
+          left join c.post p
+         where 1=1
+           and ( :kw is null
+                 or lower(c.content) like :kw
+                 or (m.email is not null and lower(m.email) like :kw)
+                 or (p.title is not null and lower(p.title) like :kw)
+               )
+           and ( :reason is null
+                 or exists (select 1 from CommentReport r where r.comment.id = c.id and r.reason = :reason)
+               )
+           and ( :from is null or c.createdAt >= :from )
+           and ( :to   is null or c.createdAt <= :to )
+           and (
+                  :status = 'ALL'
+               or (:status = 'HIDDEN'  and c.isPublic = false)
+               or (:status = 'PENDING' and c.moderationDueAt is not null and c.moderationDueAt >= CURRENT_TIMESTAMP)
+               or (:status = 'EXPIRED' and c.moderationDueAt is not null and c.moderationDueAt <  CURRENT_TIMESTAMP)
+               )
+           and ( :reportedOnly is null
+                 or :reportedOnly = false
+                 or ( :reportedOnly = true and c.reportCount > 0 )
+               )
+        """)
+    Page<Comment> findAdminDynamic(
+            @Param("kw") String kw,
+            @Param("status") String status,
+            @Param("reason") cotw.server.domain.comment.entity.ReportReason reason,
+            @Param("from") java.time.LocalDateTime from,
+            @Param("to") java.time.LocalDateTime to,
+            @Param("reportedOnly") Boolean reportedOnly,
+            Pageable pageable
+    );
+
+    // ===== 대시보드 보강 카운트 =====
+    @Query("""
+        select count(c) from Comment c
+         where c.isPublic = false
+           and c.deletedAt is null
+    """)
+    long countAdminHiddenAll();
+
+    @Query("""
+        select count(c) from Comment c
+         where c.reportCount > 0
+           and c.deletedAt is null
+    """)
+    long countAdminReported();
 
 }
