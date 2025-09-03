@@ -28,6 +28,7 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     List<PaymentOrder> findByMemberIdOrderByCreatedAtDesc(Long memberId);
     List<PaymentOrder> findByPostIdOrderByCreatedAtDesc(Long postId);
     boolean existsByOrderId(String orderId);
+    boolean existsByPostId(Long postId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""

@@ -1,5 +1,6 @@
 package cotw.server.domain.payment.exception;
 
+import cotw.server.domain.board.exception.PostHasPaymentHistoryException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +39,19 @@ public class PaymentExceptionHandler {
         errorResponse.put("status", HttpStatus.BAD_REQUEST.value());
         errorResponse.put("error", "Payment Error");
         errorResponse.put("errorCode", e.getErrorCode());
+        errorResponse.put("message", e.getMessage());
+
+        return ResponseEntity.badRequest().body(errorResponse);
+    }
+
+    @ExceptionHandler(PostHasPaymentHistoryException.class)
+    public ResponseEntity<Map<String, Object>> handlePostHasPaymentHistoryException(PostHasPaymentHistoryException e) {
+        log.warn("Attempt to delete post with payment history: {}", e.getMessage());
+
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("timestamp", LocalDateTime.now());
+        errorResponse.put("status", HttpStatus.BAD_REQUEST.value());
+        errorResponse.put("error", "Post Deletion Error");
         errorResponse.put("message", e.getMessage());
 
         return ResponseEntity.badRequest().body(errorResponse);

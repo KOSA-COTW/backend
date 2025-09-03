@@ -2,10 +2,14 @@ package cotw.server.domain.board.entity;
 
 import cotw.server.common.BaseEntity;
 import cotw.server.domain.member.entity.Member;
+import cotw.server.domain.comment.entity.CommentLike;
+import cotw.server.domain.comment.entity.CommentReport;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import static jakarta.persistence.GenerationType.IDENTITY;
 
@@ -64,6 +68,16 @@ public class Comment extends BaseEntity {
     // 임시 숨김 후 48시간 검토 마감 시각
     @Column(name = "moderation_due_at")
     private LocalDateTime moderationDueAt;
+
+    // 댓글 좋아요 목록
+    @Builder.Default
+    @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CommentLike> commentLikes = new ArrayList<>();
+
+    // 댓글 신고 목록
+    @Builder.Default
+    @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CommentReport> commentReports = new ArrayList<>();
 
     // 낙관적 락(동시 업데이트 감지)
     // - @Builder.Default + NOT NULL: 빌더로 생성 시 null 방지
