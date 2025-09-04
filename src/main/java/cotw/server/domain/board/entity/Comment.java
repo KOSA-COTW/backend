@@ -95,13 +95,17 @@ public class Comment extends BaseEntity {
     public void decreaseLikeCount() { if (this.likeCount > 0) this.likeCount--; }
 
 
-    public void applyReportTally(int total) {
-        this.reportCount = total;
-        if (this.reportCount >= 3 && this.isPublic) {
+    // Comment.java
+    public void applyReportTally(int totalReports) {
+        this.reportCount = totalReports; // ✅ DB 필드 갱신
+        if (totalReports >= 3) {
             this.isPublic = false;
             this.moderationDueAt = LocalDateTime.now().plusHours(48);
+        } else {
+            this.moderationDueAt = null;
         }
     }
+
 
     /** (과거 코드 호환용) 증가 방식 사용 시에도 동일 규칙 적용 */
     @Deprecated

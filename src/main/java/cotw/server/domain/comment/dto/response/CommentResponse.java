@@ -13,5 +13,6 @@ public record CommentResponse(
         LocalDateTime createdAt,
         LocalDateTime moderationDueAt,
         boolean liked,
-        String authorEmail
+        String authorEmail,
+        boolean alreadyReported   // ✅ 본인 신고 여부
 ) {}

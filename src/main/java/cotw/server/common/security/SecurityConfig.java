@@ -107,6 +107,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
 
+                // ✅ 댓글 관련 공개 허용
+                .requestMatchers(HttpMethod.GET, "/api/comments").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/comments/reports/reasons").permitAll()
+
                 // 생성 권한
                 .requestMatchers(HttpMethod.POST, "/api/posts").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/posts/admin").hasRole("ADMIN")
@@ -123,6 +128,7 @@ public class SecurityConfig {
 
                 .anyRequest().authenticated()
         );
+
 
         // OAuth2 로그인
         http.oauth2Login(oauth -> oauth

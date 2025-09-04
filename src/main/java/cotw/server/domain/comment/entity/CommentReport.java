@@ -6,6 +6,8 @@ import cotw.server.domain.member.entity.Member;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 /**
  * 댓글 신고 로그 엔티티
  * - UNIQUE(comment_id, member_id): 동일 사용자가 동일 댓글을 1회만 신고 가능
@@ -47,4 +49,8 @@ public class CommentReport extends BaseEntity {
     // (선택) 기타 사유 상세
     @Column(length = 200)
     private String detail;
+
+    /** 신고 무효 처리 시각(집계 제외) */
+    @Column(name = "cleared_at")
+    private LocalDateTime clearedAt;
 }

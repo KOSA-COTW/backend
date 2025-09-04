@@ -72,7 +72,7 @@ public class CommentReportService {
         }
 
         // 5) 총 신고 수 재계산 및 규칙 반영
-        int total = (int) reportRepository.countByCommentId(commentId);
+        int total = (int) reportRepository.countActiveByCommentId(commentId);
         comment.applyReportTally(total);
 
         // 최신 스냅샷 보장
