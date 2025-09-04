@@ -26,7 +26,7 @@ public class ReissueController {
     private final RefreshTokenService refreshTokenService;
 
 
-    @PostMapping("/reissue")
+    @PostMapping("/api/reissue")
     public ResponseEntity<?> reissue(HttpServletRequest request, HttpServletResponse response) {
 
         //get refresh token

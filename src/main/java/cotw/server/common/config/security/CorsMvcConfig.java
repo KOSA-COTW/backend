@@ -1,4 +1,4 @@
-package cotw.server.common.security;
+package cotw.server.common.config.security;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;

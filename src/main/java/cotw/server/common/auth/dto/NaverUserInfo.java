@@ -1,4 +1,4 @@
-package cotw.server.common.auth.DTO;
+package cotw.server.common.auth.dto;
 
 
 import cotw.server.common.auth.OAuth2UserInfo;

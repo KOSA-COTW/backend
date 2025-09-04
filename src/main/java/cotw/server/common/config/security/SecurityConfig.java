@@ -1,4 +1,4 @@
-package cotw.server.common.security;
+package cotw.server.common.config.security;
 
 import cotw.server.common.auth.CustomOAuth2UserService;
 import cotw.server.common.auth.OAuth2LoginSuccessHandler;
@@ -101,11 +101,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/", "/api/auth/login", "/api/auth/signup", "/reissue").permitAll()
                 .requestMatchers("/api/payments/success", "/api/payments/confirm").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/info", "/public/donation-total").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/info", "/api/public/donation-total").permitAll()
                 // 소프트 삭제 관련 요청
-                .requestMatchers(HttpMethod.POST, "/deactivate", "/recover").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/deactivate", "/api/recover").permitAll()
 
-                .requestMatchers(HttpMethod.PATCH, "/editpass", "/changeimage", "/editnickname").permitAll()
+                .requestMatchers(HttpMethod.PATCH, "/api/editpass", "/api/changeimage", "/api/editnickname").permitAll()
 
                 // 공개 조회
                 .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()

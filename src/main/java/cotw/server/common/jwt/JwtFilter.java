@@ -35,10 +35,10 @@ public class JwtFilter extends OncePerRequestFilter {
     private static final RequestMatcher SKIP_AUTH = new OrRequestMatcher(
             new AntPathRequestMatcher("/api/auth/login", "POST"),
             new AntPathRequestMatcher("/api/auth/signup", "POST"),
-            new AntPathRequestMatcher("/reissue", "POST"),
+            new AntPathRequestMatcher("/api/reissue", "POST"),
             new AntPathRequestMatcher("/oauth2/authorization/**"),   // 소셜 로그인 시작 URL
             new AntPathRequestMatcher("/login/oauth2/code/**"),       // 콜백 URL
-            new AntPathRequestMatcher("/public/donation-total"),
+            new AntPathRequestMatcher("/api/public/donation-total"),
             request -> "OPTIONS".equalsIgnoreCase(request.getMethod())
     );
 

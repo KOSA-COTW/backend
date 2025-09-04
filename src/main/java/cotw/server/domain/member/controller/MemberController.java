@@ -1,9 +1,9 @@
 package cotw.server.domain.member.controller;
 
 import cotw.server.common.jwt.CustomUserDetails;
-import cotw.server.domain.member.Dto.request.*;
-import cotw.server.domain.member.Dto.response.ShowInfoResponseDTO;
-import cotw.server.domain.member.Dto.response.SignUpResponseDTO;
+import cotw.server.domain.member.dto.request.*;
+import cotw.server.domain.member.dto.response.ShowInfoResponseDTO;
+import cotw.server.domain.member.dto.response.SignUpResponseDTO;
 import cotw.server.domain.member.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

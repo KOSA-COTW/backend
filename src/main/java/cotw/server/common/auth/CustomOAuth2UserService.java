@@ -1,8 +1,8 @@
 package cotw.server.common.auth;
 
-import cotw.server.common.auth.DTO.GoogleUserInfo;
-import cotw.server.common.auth.DTO.KakaoUserInfo;
-import cotw.server.common.auth.DTO.NaverUserInfo;
+import cotw.server.common.auth.dto.GoogleUserInfo;
+import cotw.server.common.auth.dto.KakaoUserInfo;
+import cotw.server.common.auth.dto.NaverUserInfo;
 import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.ProviderType;
