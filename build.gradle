@@ -53,10 +53,6 @@ dependencies {
     // env 관련
     implementation "me.paulschwarz:spring-dotenv:4.0.0"
 
-    // 통합 테스트에 유용(선택)
-    testImplementation 'org.testcontainers:junit-jupiter'
-    testImplementation 'org.testcontainers:redis'
-
     // resilience4j
     implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
     implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.2.0'

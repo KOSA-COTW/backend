@@ -2,6 +2,7 @@ package cotw.server.domain.payment.service;
 
 import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Post;
+import cotw.server.domain.board.entity.PostVisibility;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.payment.entity.PaymentLedger;
@@ -17,7 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,7 +59,8 @@ class LedgerServiceTest {
                 .category(Category.CHILD)
                 .amount(100000)
                 .currentAmount(0)
-                .isPublic(true)
+                .visibilityStatus(PostVisibility.APPROVED)
+                .deadline(LocalDate.of(2025, 10, 1))
                 .build();
 
         testPaymentOrder = PaymentOrder.builder()

@@ -44,8 +44,8 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       
       # Redis 설정
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
       
       # AWS 설정
       AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}

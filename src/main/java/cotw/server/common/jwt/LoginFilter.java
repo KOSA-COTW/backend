@@ -2,41 +2,24 @@ package cotw.server.common.jwt;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import cotw.server.common.jwt.entity.RefreshToken;
-import cotw.server.common.jwt.repository.RefreshTokenJpaRepository;
 import cotw.server.common.jwt.service.RefreshTokenService;
 import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationServiceException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-import org.springframework.security.web.util.matcher.OrRequestMatcher;
-import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
-import java.time.Duration;
-import java.util.*;
 
 
 @Slf4j
@@ -127,7 +110,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         // refresh는 HttpOnly 쿠키로(크로스도메인 테스트면 SameSite=None; Secure 필수)
         ResponseCookie refreshCookie = ResponseCookie.from("refresh", refresh)
                 .httpOnly(true)
-                .secure(false)      // 개발이 http라면 false 또는 프록시/https로 테스트
+                .secure(true)      // HTTPS 환경에서는 반드시 true
                 .path("/")
                 .sameSite("None")  // 크로스 도메인일 때 필수
                 .maxAge(Duration.ofDays(1))
@@ -178,16 +161,4 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             log.error("Error writing error response", e);
         }
     }
-
-//    private void addRefreshToken(String email, String refreshToken, Long expiredMs) {
-//            Date date = new Date(System.currentTimeMillis() + expiredMs);
-//
-//            RefreshToken refreshTokenEntity = new RefreshToken();
-//            refreshTokenEntity.setEmail(email);
-//            refreshTokenEntity.setRefreshToken(refreshToken);
-//            refreshTokenEntity.setExpiryDate(date.toString());
-//
-//            refreshTokenRepository.save(refreshTokenEntity);
-//    }
-
 }
