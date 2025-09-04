@@ -2,6 +2,7 @@ package cotw.server.domain.payment;
 
 import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Post;
+import cotw.server.domain.board.entity.PostVisibility;
 import cotw.server.domain.board.repository.PostRepository;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
@@ -21,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -69,7 +71,8 @@ class PaymentDataIntegrityTest {
                 .category(Category.CHILD)
                 .amount(100000)
                 .currentAmount(0)
-                .isPublic(true)
+                .visibilityStatus(PostVisibility.APPROVED)
+                .deadline(LocalDate.of(2025, 10, 1))
                 .build();
         testPost = postRepository.save(testPost);
     }

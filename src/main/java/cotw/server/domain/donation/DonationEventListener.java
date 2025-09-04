@@ -1,7 +1,7 @@
 package cotw.server.domain.donation;
 
-import cotw.server.domain.donation.DTO.PaymentCountedEvent;
-import cotw.server.domain.donation.DTO.PaymentReversedEvent;
+import cotw.server.domain.donation.dto.PaymentCountedEvent;
+import cotw.server.domain.donation.dto.PaymentReversedEvent;
 import cotw.server.domain.donation.service.DonationCounterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

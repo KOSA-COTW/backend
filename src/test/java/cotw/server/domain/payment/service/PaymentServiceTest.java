@@ -3,6 +3,7 @@ package cotw.server.domain.payment.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Post;
+import cotw.server.domain.board.entity.PostVisibility;
 import cotw.server.domain.board.repository.PostRepository;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
@@ -28,13 +29,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestClient;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -92,7 +93,8 @@ class PaymentServiceTest {
                 .category(Category.CHILD)
                 .amount(100000)
                 .currentAmount(0)
-                .isPublic(true)
+                .visibilityStatus(PostVisibility.APPROVED)
+                .deadline(LocalDate.of(2025, 10, 1))
                 .build();
 
         testPaymentEvent = PaymentEvent.builder()

@@ -1,30 +1,134 @@
-version: '3'
 services:
+  # PostgreSQL 데이터베이스
   postgres:
-    image: postgres:latest
-    container_name: postgres-container
+    image: postgres:15-alpine
+    env_file: ./.env
+    container_name: cotw-postgres
+    restart: unless-stopped
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=1234
-      - POSTGRES_DB=cotw
+      POSTGRES_DB: cotw
+      POSTGRES_USER: ${DB_ID}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     ports:
       - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cotw-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cotw"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # Spring Boot 애플리케이션 (Docker Hub 이미지 사용)
+  app:
+    image: ${BACKEND_IMAGE}
+    env_file: ./.env
+    container_name: cotw-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # 데이터베이스 설정
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cotw
+      SPRING_DATASOURCE_USERNAME: ${DB_ID}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      
+      # JPA 설정
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      
+      # Redis 설정
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      
+      # AWS 설정
+      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
+      AWS_SECRET_KEY: ${AWS_SECRET_KEY}
+      AWS_REGION: ${AWS_REGION}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      
+      # Toss Payment 설정
+      TOSS_SECRET_KEY: ${TOSS_SECRET_KEY}
+      TOSS_API_URL: ${TOSS_API_URL}
+      
+      # JWT 설정
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_HEADER: Authorization
+      
+      # OAuth2 설정
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      
+      # URL 설정
+      BACKEND_URL: ${BACKEND_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+      
+      # DB 설정
+      DB_ID: ${DB_ID}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: cotw
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - cotw-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
+  # Vue
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    env_file: ./.env
+    container_name: cotw-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    depends_on:
+      - app
+    networks:
+      - cotw-network
+
+  # Redis 캐시
   redis:
     image: redis:7-alpine
-    command: [ "redis-server", "--appendonly", "yes" ]   # AOF로 내구성 확보
-    ports: [ "6379:6379" ]
+    env_file: ./.env
+    container_name: cotw-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
     volumes:
-      - redis-data:/data
-
+      - redis_data:/data
+    networks:
+      - cotw-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
-  postgres-data:
-  redis-data:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
 
 networks:
-  postgres-network:
+  cotw-network:
     driver: bridge

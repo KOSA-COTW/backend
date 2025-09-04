@@ -1,4 +1,4 @@
-package cotw.server.domain.donation.DTO;
+package cotw.server.domain.donation.dto;
 
 import java.time.LocalDate;
 

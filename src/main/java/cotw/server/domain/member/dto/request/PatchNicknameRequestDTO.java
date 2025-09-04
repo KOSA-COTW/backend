@@ -1,4 +1,4 @@
-package cotw.server.domain.member.Dto.request;
+package cotw.server.domain.member.dto.request;
 
 public record PatchNicknameRequestDTO(
         String newNickname
