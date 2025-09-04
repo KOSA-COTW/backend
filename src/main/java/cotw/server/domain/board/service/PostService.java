@@ -4,6 +4,7 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
+import cotw.server.domain.board.dto.response.DonorResponseDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
 import cotw.server.domain.board.entity.Category;
@@ -84,8 +85,10 @@ public class PostService {
      */
     @Transactional(readOnly = true)
     public PostResponseDto getPostForView(Long postId, String viewerEmailOrNull) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new BoardException("존재하지 않는 게시글입니다."));
+        Post post = postRepository.findDetailById(postId)
+                .orElseThrow(() -> new BoardException("존재하지 않는 게시글입니다.", "POST_NOT_FOUND"));
+
+        post.getParticipants().forEach(p -> p.getMember().getName());
 
         if (post.getVisibilityStatus() == PostVisibility.APPROVED) {
             return new PostResponseDto(post);

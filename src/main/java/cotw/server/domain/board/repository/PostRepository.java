@@ -45,5 +45,13 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     int anonymizeAuthorByMemberIds(@Param("memberIds") List<Long> memberIds,
                                    @Param("deletedUser") Member deletedUser);
 
+    @Query("""
+   SELECT DISTINCT p
+   FROM Post p
+   LEFT JOIN FETCH p.images
+   WHERE p.id = :id
+   """)
+    Optional<Post> findDetailById(@Param("id") Long id);
+
 }
 
