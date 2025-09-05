@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import cotw.server.domain.board.entity.Participant;
 import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.board.repository.PostRepository;
+import cotw.server.domain.donation.service.PaymentEventPublisher;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.repository.MemberRepository;
 import cotw.server.domain.payment.config.TossPaymentConfig;
@@ -31,6 +32,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.concurrent.CompletableFuture;
 
@@ -48,6 +51,8 @@ public class PaymentService {
     private final TransactionService transactionService;
     private final ObjectMapper objectMapper;
     private final RestClient restClient;
+
+    private final PaymentEventPublisher events;
 
     public PaymentCreateResponse createPayment(PaymentCreateRequest request, Long memberId) {
         // orderId 필수 검증
@@ -167,6 +172,17 @@ public class PaymentService {
         // 10. 비동기로 PaymentLedger 생성
         ledgerService.createPaymentLedgerAsync(paymentOrder);
 
+
+        // redis 반영을 위한 코드
+        // 11. 카운터 집계 이벤트 발행 (커밋 후 Redis INCR)
+        // approvedAt을 Toss 응답에서 구하거나 현재시각으로 대체
+        LocalDate paidDate = resolveApprovedAtFromTossOrNow().toLocalDate();
+        events.publishCounted(
+                null,                            // ledgerId 모르면 null 가능
+                post.getId(),                    // 집계 단위: 게시글
+                request.getAmount().longValue(), // 금액
+                paidDate
+        );
     }
 
     public PaymentCancelResponse cancelPayment(PaymentCancelRequest request) {
@@ -225,13 +241,35 @@ public class PaymentService {
         // 8. 비동기로 PaymentLedger 취소 상태로 업데이트
         ledgerService.updateLedgerToCanceledAsync(paymentOrder, request.getCancelReason());
 
+        // 이전 상태가 DONE이었다면 차감 이벤트 발행 (커밋 후 Redis DECR)
+        // 기준 날짜: 원 결제일(주문 생성일이 있으면 사용), 없으면 now
+        LocalDate baseDate = (paymentOrder.getCreatedAt() != null)
+                ? paymentOrder.getCreatedAt().toLocalDate()
+                : LocalDate.now();
+
+
+        // redis 반영을 위한 코드
+        // 취소 금액 계산 (부분취소 대응)
+        Integer actualCancelAmount = (request.getCancelAmount() != null)
+                ? request.getCancelAmount()
+                : paymentOrder.getAmount();
+
+        if (/* 이전이 DONE이었는지 확인 필요 시 */ true) {
+            events.publishReversed(
+                    null,
+                    paymentOrder.getPost().getId(),
+                    actualCancelAmount.longValue(),
+                    baseDate
+            );
+        }
+
         return buildCancelResponse(paymentOrder, request.getCancelReason());
     }
 
-    @CircuitBreaker(name = "paymentService", fallbackMethod = "fallbackTossCancelApi")
     @Retry(name = "paymentService")
-    @Bulkhead(name = "paymentService")
+    @CircuitBreaker(name = "paymentService", fallbackMethod = "fallbackTossCancelApi")
     @TimeLimiter(name = "paymentService")
+    @Bulkhead(name = "paymentService")
     public CompletableFuture<TossCancelResponse> callTossCancelApiAsync(PaymentCancelRequest request) {
         return CompletableFuture.supplyAsync(() -> callTossCancelApi(request));
     }
@@ -319,10 +357,10 @@ public class PaymentService {
     }
 
 
-    @CircuitBreaker(name = "paymentService", fallbackMethod = "fallbackTossConfirmApi")
     @Retry(name = "paymentService")
-    @Bulkhead(name = "paymentService")
+    @CircuitBreaker(name = "paymentService", fallbackMethod = "fallbackTossConfirmApi")
     @TimeLimiter(name = "paymentService")
+    @Bulkhead(name = "paymentService")
     public CompletableFuture<TossPaymentResponse> callTossConfirmApiAsync(PaymentConfirmRequest request) {
         return CompletableFuture.supplyAsync(() -> callTossConfirmApi(request));
     }
@@ -365,7 +403,13 @@ public class PaymentService {
         }
     }
 
-    
+    private LocalDateTime resolveApprovedAtFromTossOrNow() {
+        // TossPaymentResponse에 approvedAt이 있으면 그걸 쓰고,
+        // DTO에 없으면 일단 now() 사용 (필요하면 Toss 응답 필드 연결)
+        return LocalDateTime.now();
+    }
+
+
     private void createParticipant(Member member, Post post, Integer amount) {
         // 기부 참여자 정보 생성
         Participant participant = Participant.builder()

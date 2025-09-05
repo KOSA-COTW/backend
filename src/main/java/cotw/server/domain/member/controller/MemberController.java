@@ -1,9 +1,9 @@
 package cotw.server.domain.member.controller;
 
 import cotw.server.common.jwt.CustomUserDetails;
-import cotw.server.domain.member.Dto.request.*;
-import cotw.server.domain.member.Dto.response.ShowInfoResponseDTO;
-import cotw.server.domain.member.Dto.response.SignUpResponseDTO;
+import cotw.server.domain.member.dto.request.*;
+import cotw.server.domain.member.dto.response.ShowInfoResponseDTO;
+import cotw.server.domain.member.dto.response.SignUpResponseDTO;
 import cotw.server.domain.member.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,10 +11,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
 
 @RestController
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class MemberController {
 
@@ -61,8 +63,8 @@ public class MemberController {
 
     @PatchMapping("/changeimage")
     public ResponseEntity<Void> channgeProfileImage(@AuthenticationPrincipal CustomUserDetails customUserDetails,
-                                                    @RequestBody PatchImageReqeustDTO reqeustDTO){
-        memberService.editImage(customUserDetails, reqeustDTO.ImageUrl());
+                                                    @RequestPart("file") MultipartFile file){
+        memberService.editImage(customUserDetails, file);
         return ResponseEntity.ok().build();
     }
 

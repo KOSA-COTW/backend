@@ -5,6 +5,7 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import cotw.server.domain.board.dto.request.NoticeRequestDto;
 import cotw.server.domain.board.dto.response.NoticeResponseDto;
 import cotw.server.domain.board.entity.Notice;
+import cotw.server.domain.board.exception.BoardException;
 import cotw.server.domain.board.repository.NoticeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,13 +46,13 @@ public class NoticeService {
 
     public NoticeResponseDto getNotice(Long id) {
         Notice notice = noticeRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("공지사항을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BoardException("공지사항을 찾을 수 없습니다."));
         return new NoticeResponseDto(notice);
     }
 
     public NoticeResponseDto updateNotice(Long id, NoticeRequestDto dto) {
         Notice notice = noticeRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("공지사항을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BoardException("공지사항을 찾을 수 없습니다."));
 
         notice.update(dto);
         return new NoticeResponseDto(noticeRepository.save(notice));

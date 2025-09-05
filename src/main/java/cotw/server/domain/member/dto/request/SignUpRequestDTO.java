@@ -1,11 +1,9 @@
-package cotw.server.domain.member.Dto.request;
+package cotw.server.domain.member.dto.request;
 
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-
-import java.time.LocalDateTime;
 
 public record SignUpRequestDTO(
         String name,
@@ -20,12 +18,13 @@ public record SignUpRequestDTO(
         String nickname
 ) {
 
-    public Member toEntity(String name,String nickname, String email, String password, Role role) {
+    public Member toEntity(String name,String nickname, String email, String password,String pictureUrl, Role role) {
         return Member.builder()
                 .name(name)
                 .nickname(nickname)
                 .email(email)
                 .password(password)
+                .pictureUrl(pictureUrl)
                 .role(role)
                 .build();
     }

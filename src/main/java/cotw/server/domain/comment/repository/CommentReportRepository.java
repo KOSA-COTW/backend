@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,11 +37,14 @@ public interface CommentReportRepository extends JpaRepository<CommentReport, Lo
     List<Object[]> countActiveByReason(@Param("commentId") Long commentId);
 
     // ===== 활성 로그 조회 (확장행용) =====
-    @EntityGraph(attributePaths = {"member"})
-    List<CommentReport> findByCommentIdAndClearedAtIsNullOrderByCreatedAtAsc(Long commentId);
 
     @EntityGraph(attributePaths = {"member"})
     List<CommentReport> findByCommentIdAndClearedAtIsNullOrderByCreatedAtDesc(Long commentId);
+
+    void deleteByMemberIdIn(Collection<Long> memberIds);
+
+    @Query("select r.reason, count(r) from CommentReport r where r.comment.id = :commentId group by r.reason")
+    List<Object[]> countByReason(@Param("commentId") Long commentId);
 
     // (선택) 활성 로그의 마지막 신고 시각
     @Query("select max(r.createdAt) from CommentReport r where r.comment.id = :commentId and r.clearedAt is null")
@@ -69,4 +73,5 @@ public interface CommentReportRepository extends JpaRepository<CommentReport, Lo
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from CommentReport r where r.comment.id in :ids")
     void hardDeleteByCommentIdIn(@Param("ids") List<Long> ids);
+
 }

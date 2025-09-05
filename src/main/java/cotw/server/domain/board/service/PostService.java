@@ -4,16 +4,20 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
+import cotw.server.domain.board.dto.response.DonorResponseDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
 import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Image;
 import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.board.entity.PostVisibility;
+import cotw.server.domain.board.exception.BoardException;
+import cotw.server.domain.board.exception.PostHasPaymentHistoryException;
 import cotw.server.domain.board.repository.PostRepository;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
+import cotw.server.domain.payment.repository.PaymentOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -35,6 +39,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
+    private final PaymentOrderRepository paymentOrderRepository;
     private final AmazonS3Client s3Client;
 
     @Value("${aws.s3.bucket}")
@@ -48,10 +53,10 @@ public class PostService {
     @Transactional
     public Long createPost(PostCreateRequestDto dto, String authorEmail) {
         Member author = memberRepository.findByEmail(authorEmail)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+                .orElseThrow(() -> new BoardException("존재하지 않는 회원입니다."));
 
         if (!dto.getDeadline().isAfter(LocalDate.now())) {
-            throw new IllegalArgumentException("기부 마감일은 오늘 이후여야 합니다.");
+            throw new BoardException("기부 마감일은 오늘 이후여야 합니다.");
         }
 
         Post post = dto.toPostEntity(author);
@@ -80,8 +85,10 @@ public class PostService {
      */
     @Transactional(readOnly = true)
     public PostResponseDto getPostForView(Long postId, String viewerEmailOrNull) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다."));
+        Post post = postRepository.findDetailById(postId)
+                .orElseThrow(() -> new BoardException("존재하지 않는 게시글입니다.", "POST_NOT_FOUND"));
+
+        post.getParticipants().forEach(p -> p.getMember().getName());
 
         if (post.getVisibilityStatus() == PostVisibility.APPROVED) {
             return new PostResponseDto(post);
@@ -89,7 +96,7 @@ public class PostService {
 
         // 로그인 안 한 경우 차단
         if (viewerEmailOrNull == null) {
-            throw new AccessDeniedException("비공개 게시글입니다.");
+            throw new BoardException("비공개 게시글입니다.");
         }
 
         // 작성자 본인
@@ -99,12 +106,12 @@ public class PostService {
 
         // 관리자
         Member viewer = memberRepository.findByEmail(viewerEmailOrNull)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+                .orElseThrow(() -> new BoardException("존재하지 않는 회원입니다."));
         if (viewer.getRole() == Role.ADMIN) {
             return new PostResponseDto(post);
         }
 
-        throw new AccessDeniedException("비공개 게시글입니다.");
+        throw new BoardException("비공개 게시글입니다.");
     }
 
     /**
@@ -115,14 +122,14 @@ public class PostService {
     @Transactional
     public void updatePost(Long postId, PostUpdateRequestDto dto, String editorEmail) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다."));
+                .orElseThrow(() -> new BoardException("존재하지 않는 게시글입니다."));
 
         Member requester = memberRepository.findByEmail(editorEmail)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+                .orElseThrow(() -> new BoardException("존재하지 않는 회원입니다."));
 
         if (!post.getAuthor().getEmail().equals(editorEmail) &&
                 requester.getRole() != Role.ADMIN) {
-            throw new AccessDeniedException("수정 권한이 없습니다.");
+            throw new BoardException("수정 권한이 없습니다.");
         }
 
         post.update(dto); // 내부에서 APPROVED → PENDING 전환됨
@@ -143,73 +150,27 @@ public class PostService {
     /**
      * 게시글 삭제
      * - 작성자 or 관리자 가능
+     * - 결제 내역이 있는 게시글은 삭제 불가
      */
     @Transactional
     public void deletePost(Long postId, String requesterEmail) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다."));
+                .orElseThrow(() -> new BoardException("존재하지 않는 게시글입니다."));
 
         Member requester = memberRepository.findByEmail(requesterEmail)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+                .orElseThrow(() -> new BoardException("존재하지 않는 회원입니다."));
 
         if (!post.getAuthor().getEmail().equals(requesterEmail) &&
                 requester.getRole() != Role.ADMIN) {
-            throw new AccessDeniedException("삭제 권한이 없습니다.");
+            throw new BoardException("삭제 권한이 없습니다.");
+        }
+
+        // 결제 내역이 있는지 확인
+        if (paymentOrderRepository.existsByPostId(postId)) {
+            throw new PostHasPaymentHistoryException("결제내역이 있는 게시물은 삭제할 수 없습니다.");
         }
 
         postRepository.delete(post);
-    }
-
-    /**
-     * 관리자: 상태 변경 (승인 / 거절 / 비공개 / 대기)
-     */
-    @Transactional
-    public void changePostsVisibility(List<Long> postIds, PostVisibility newStatus, String requesterEmail, String rejectionReason) {
-        Member requester = memberRepository.findByEmail(requesterEmail)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
-
-        if (requester.getRole() != Role.ADMIN) {
-            throw new AccessDeniedException("관리자만 변경 가능합니다.");
-        }
-
-        var posts = postRepository.findAllById(postIds);
-        for (Post post : posts) {
-            switch (newStatus) {
-                case APPROVED -> post.approve();
-                case REJECTED -> post.reject(rejectionReason);
-                case PRIVATE -> post.makePrivate();
-                case PENDING -> post.markPending();
-            }
-        }
-    }
-
-    /**
-     * 공개된 글(승인됨) 목록
-     */
-    @Transactional(readOnly = true)
-    public List<PostListResponseDto> getAllPublicPosts() {
-        return postRepository.findAllByVisibilityStatus(PostVisibility.APPROVED)
-                .stream().map(PostListResponseDto::new).toList();
-    }
-
-    /**
-     * 관리자 전용: 상태 필터링 조회
-     */
-    @Transactional(readOnly = true)
-    public List<PostListResponseDto> getAdminPosts(Category category, PostVisibility visibility,
-                                                   Integer page, Integer limit) {
-        int size = (limit != null && List.of(10, 20, 50).contains(limit)) ? limit : 10;
-        int pageNum = (page != null && page > 0) ? page - 1 : 0;
-
-        Pageable pageable = PageRequest.of(pageNum, size);
-
-        Page<Post> postsPage = (visibility != null)
-                ? postRepository.findByCategoryAndVisibilityStatus(category, visibility, pageable)
-                : postRepository.findByCategory(category, pageable);
-
-        return postsPage.stream()
-                .map(PostListResponseDto::new)
-                .toList();
     }
 
     /**
@@ -239,7 +200,7 @@ public class PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("게시글 없음"));
         if (!post.getAuthor().getId().equals(user.getId())) {
-            throw new RuntimeException("본인 글만 승인 요청 가능");
+            throw new BoardException("본인 글만 승인 요청 가능");
         }
         if (post.getVisibilityStatus() == PostVisibility.PRIVATE ||
                 post.getVisibilityStatus() == PostVisibility.REJECTED) {
@@ -255,7 +216,7 @@ public class PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("게시글 없음"));
         if (!post.getAuthor().getId().equals(user.getId())) {
-            throw new RuntimeException("본인 글만 승인 요청 가능");
+            throw new BoardException("본인 글만 승인 요청 가능");
         }
         if (post.getVisibilityStatus() == PostVisibility.PENDING) {
             post.makePrivate(); // 다시 비공개 상태로

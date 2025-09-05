@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 public class PostResponseDto {
@@ -48,6 +49,7 @@ public class PostResponseDto {
     private String status;        // "ONGOING" | "COMPLETED"
     private int daysLeft;         // 남은 일수 (음수면 0)
     private int donorCount;       // 기부자 수
+    private List<DonorResponseDto> donors;  // 기부자 목록
 
     public PostResponseDto(Post post) {
         this(post, LocalDate.now());
@@ -105,5 +107,9 @@ public class PostResponseDto {
         } else {
             this.daysLeft = 0;
         }
+
+        this.donors = post.getParticipants().stream()
+                .map(DonorResponseDto::new)
+                .collect(Collectors.toList());
     }
 }

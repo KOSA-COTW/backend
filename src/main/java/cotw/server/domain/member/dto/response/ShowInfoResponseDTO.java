@@ -1,4 +1,4 @@
-package cotw.server.domain.member.Dto.response;
+package cotw.server.domain.member.dto.response;
 
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.ProviderType;

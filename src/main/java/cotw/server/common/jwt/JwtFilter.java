@@ -8,7 +8,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.lang.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -34,10 +33,12 @@ public class JwtFilter extends OncePerRequestFilter {
 
     // 1) 화이트리스트: 로그인/리프레시
     private static final RequestMatcher SKIP_AUTH = new OrRequestMatcher(
-            new AntPathRequestMatcher("/auth/login", "POST"),
-            new AntPathRequestMatcher("/reissue", "POST"),
+            new AntPathRequestMatcher("/api/auth/login", "POST"),
+            new AntPathRequestMatcher("/api/auth/signup", "POST"),
+            new AntPathRequestMatcher("/api/reissue", "POST"),
             new AntPathRequestMatcher("/oauth2/authorization/**"),   // 소셜 로그인 시작 URL
             new AntPathRequestMatcher("/login/oauth2/code/**"),       // 콜백 URL
+            new AntPathRequestMatcher("/api/public/donation-total"),
             request -> "OPTIONS".equalsIgnoreCase(request.getMethod())
     );
 
