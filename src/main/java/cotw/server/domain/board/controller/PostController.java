@@ -1,10 +1,13 @@
 package cotw.server.domain.board.controller;
 
 import cotw.server.common.jwt.CustomUserDetails;
+import cotw.server.domain.board.dto.request.MyPostPageRequestDTO;
 import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
+import cotw.server.domain.board.dto.response.MyPostPageResponseDTO;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
+import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.PostVisibility;
 import cotw.server.domain.board.service.PostService;
 import jakarta.validation.Valid;
@@ -38,13 +41,30 @@ public class PostController {
     }
 
     /**
-     * 내가 쓴 모든 게시글 조회
+     * 내가 쓴 모든 게시글 조회 (페이징, 필터링, 정렬)
      * - 본인 글은 PRIVATE, PENDING, APPROVED, REJECTED 전부 조회 가능
      */
     @GetMapping("/me")
-    public ResponseEntity<List<PostResponseDto>> getMyPosts(
-            @AuthenticationPrincipal CustomUserDetails principal) {
-        return ResponseEntity.ok(postService.getMyPosts(principal.getUsername()));
+    public ResponseEntity<MyPostPageResponseDTO> getMyPosts(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) PostVisibility visibility,
+            @RequestParam(required = false) Category category,
+            @RequestParam(required = false) String title,
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection) {
+        
+        MyPostPageRequestDTO request = new MyPostPageRequestDTO();
+        request.setPage(page);
+        request.setLimit(limit);
+        request.setVisibility(visibility);
+        request.setCategory(category);
+        request.setTitle(title);
+        request.setSortBy(sortBy);
+        request.setSortDirection(sortDirection);
+        
+        return ResponseEntity.ok(postService.getMyPosts(principal.getUsername(), request));
     }
 
     /**
