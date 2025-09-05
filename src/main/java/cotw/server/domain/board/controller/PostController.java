@@ -41,7 +41,7 @@ public class PostController {
      * 내가 쓴 모든 게시글 조회
      * - 본인 글은 PRIVATE, PENDING, APPROVED, REJECTED 전부 조회 가능
      */
-    @GetMapping("/me")
+    @GetMapping("/me") //todo 마이페이지
     public ResponseEntity<List<PostResponseDto>> getMyPosts(
             @AuthenticationPrincipal CustomUserDetails principal) {
         return ResponseEntity.ok(postService.getMyPosts(principal.getUsername()));

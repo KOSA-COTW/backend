@@ -4,10 +4,8 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
-import cotw.server.domain.board.dto.response.DonorResponseDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
-import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Image;
 import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.board.entity.PostVisibility;
@@ -20,10 +18,7 @@ import cotw.server.domain.member.repository.MemberRepository;
 import cotw.server.domain.payment.repository.PaymentOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -72,7 +67,7 @@ public class PostService {
     /**
      * 내 게시글 조회 (본인 글은 상태 상관없이 모두 보여줌)
      */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true) //todo 마이페이지
     public List<PostResponseDto> getMyPosts(String email) {
         return postRepository.findAllByAuthor_Email(email)
                 .stream().map(PostResponseDto::new).toList();
