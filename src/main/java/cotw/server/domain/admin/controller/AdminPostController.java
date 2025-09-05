@@ -3,7 +3,6 @@ package cotw.server.domain.admin.controller;
 import cotw.server.common.jwt.CustomUserDetails;
 import cotw.server.domain.admin.dto.request.AdminPostPageRequestDTO;
 import cotw.server.domain.admin.dto.response.AdminPostCountResponseDTO;
-import cotw.server.domain.admin.dto.response.AdminPostListResponseDto;
 import cotw.server.domain.admin.dto.response.AdminPostPageResponseDTO;
 import cotw.server.domain.admin.service.AdminPostService;
 import cotw.server.domain.board.entity.Category;
@@ -26,11 +25,29 @@ public class AdminPostController {
     private final AdminPostService adminPostService;
 
     /**
-     * 승인 대기 중인 게시글 조회
+     * 승인 대기 중인 게시글 조회 (페이징, 필터링, 정렬)
      */
     @GetMapping("/pending")
-    public ResponseEntity<List<AdminPostListResponseDto>> getPendingPosts() {
-        return ResponseEntity.ok(adminPostService.getPostsByStatus(PostVisibility.PENDING));
+    public ResponseEntity<AdminPostPageResponseDTO> getPendingPosts(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) Category category,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String authorName,
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection) {
+        
+        AdminPostPageRequestDTO request = new AdminPostPageRequestDTO();
+        request.setPage(page);
+        request.setLimit(limit);
+        request.setVisibility(PostVisibility.PENDING);  // PENDING으로 고정
+        request.setCategory(category);
+        request.setTitle(title);
+        request.setAuthorName(authorName);
+        request.setSortBy(sortBy);
+        request.setSortDirection(sortDirection);
+        
+        return ResponseEntity.ok(adminPostService.getAllPosts(request));
     }
 
     /**
