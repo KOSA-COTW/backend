@@ -79,5 +79,28 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     long countByVisibilityStatus(PostVisibility visibilityStatus);
 
+    @Query(value = """
+        SELECT p.* FROM post p
+        LEFT JOIN member a ON a.member_id = p.member_id
+        WHERE a.email = :authorEmail
+        AND (COALESCE(:visibility, '') = '' OR p.visibility_status = :visibility)
+        AND (COALESCE(:category, '') = '' OR p.category = :category)
+        AND (COALESCE(:title, '') = '' OR LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%')))
+        ORDER BY 
+        CASE WHEN :sortBy = 'date' AND :sortDirection = 'desc' THEN p.created_at END DESC,
+        CASE WHEN :sortBy = 'date' AND :sortDirection = 'asc' THEN p.created_at END ASC,
+        CASE WHEN :sortBy = 'title' AND :sortDirection = 'desc' THEN p.title END DESC,
+        CASE WHEN :sortBy = 'title' AND :sortDirection = 'asc' THEN p.title END ASC
+        """, nativeQuery = true)
+    Page<Post> findMyPostsWithFilters(
+            @Param("authorEmail") String authorEmail,
+            @Param("visibility") String visibility,
+            @Param("category") String category,
+            @Param("title") String title,
+            @Param("sortBy") String sortBy,
+            @Param("sortDirection") String sortDirection,
+            Pageable pageable
+    );
+
 }
 

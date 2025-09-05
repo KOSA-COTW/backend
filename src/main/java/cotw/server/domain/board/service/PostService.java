@@ -2,8 +2,10 @@ package cotw.server.domain.board.service;
 
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import cotw.server.domain.board.dto.request.MyPostPageRequestDTO;
 import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
+import cotw.server.domain.board.dto.response.MyPostPageResponseDTO;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
 import cotw.server.domain.board.entity.Image;
@@ -18,6 +20,7 @@ import cotw.server.domain.member.repository.MemberRepository;
 import cotw.server.domain.payment.repository.PaymentOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,12 +68,36 @@ public class PostService {
     }
 
     /**
-     * 내 게시글 조회 (본인 글은 상태 상관없이 모두 보여줌)
+     * 내 게시글 조회 (페이징, 필터링, 정렬) - 본인 글은 상태 상관없이 모두 보여줌
      */
-    @Transactional(readOnly = true) //todo 마이페이지
-    public List<PostResponseDto> getMyPosts(String email) {
-        return postRepository.findAllByAuthor_Email(email)
-                .stream().map(PostResponseDto::new).toList();
+    @Transactional(readOnly = true)
+    public MyPostPageResponseDTO getMyPosts(String email, MyPostPageRequestDTO request) {
+        request.validateAndSetDefaults();
+        
+        PageRequest pageRequest = PageRequest.of(request.getPage() - 1, request.getLimit());
+        
+        Page<Post> postPage = postRepository.findMyPostsWithFilters(
+                email,
+                request.getVisibility() != null ? request.getVisibility().toString() : "",
+                request.getCategory() != null ? request.getCategory().toString() : "",
+                request.getTitle() != null ? request.getTitle() : "",
+                request.getSortBy(),
+                request.getSortDirection(),
+                pageRequest
+        );
+        
+        List<PostResponseDto> postDtos = postPage.getContent().stream()
+                .map(PostResponseDto::new)
+                .toList();
+        
+        return new MyPostPageResponseDTO(
+                postDtos,
+                postPage.getNumber() + 1,
+                postPage.getTotalPages(),
+                postPage.getTotalElements(),
+                postPage.hasNext(),
+                postPage.hasPrevious()
+        );
     }
 
     /**
