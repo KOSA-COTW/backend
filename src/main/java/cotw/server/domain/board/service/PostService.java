@@ -4,10 +4,8 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
-import cotw.server.domain.board.dto.response.DonorResponseDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
-import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Image;
 import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.board.entity.PostVisibility;
@@ -20,10 +18,7 @@ import cotw.server.domain.member.repository.MemberRepository;
 import cotw.server.domain.payment.repository.PaymentOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -55,8 +50,19 @@ public class PostService {
         Member author = memberRepository.findByEmail(authorEmail)
                 .orElseThrow(() -> new BoardException("존재하지 않는 회원입니다."));
 
-        if (!dto.getDeadline().isAfter(LocalDate.now())) {
+        LocalDate today = LocalDate.now();
+
+        // 마감일 검증
+        if (dto.getDeadline().isBefore(today)) {
             throw new BoardException("기부 마감일은 오늘 이후여야 합니다.");
+        }
+        if (dto.getDeadline().isAfter(today.plusYears(1))) {
+            throw new BoardException("기부 마감일은 1년 이내여야 합니다.");
+        }
+
+        // 금액 검증
+        if (dto.getAmount() % 100 != 0) {
+            throw new BoardException("목표 금액은 100원 단위로 입력해야 합니다.");
         }
 
         Post post = dto.toPostEntity(author);
@@ -132,6 +138,16 @@ public class PostService {
             throw new BoardException("수정 권한이 없습니다.");
         }
 
+        if (dto.getDeadline().isBefore(LocalDate.now())) {
+            throw new BoardException("기부 마감일은 오늘 이후여야 합니다.");
+        }
+        if (dto.getDeadline().isAfter(LocalDate.now().plusYears(1))) {
+            throw new BoardException("기부 마감일은 1년 이내여야 합니다.");
+        }
+        if (dto.getAmount() % 100 != 0) {
+            throw new BoardException("목표 금액은 100원 단위로 입력해야 합니다.");
+        }
+
         post.update(dto); // 내부에서 APPROVED → PENDING 전환됨
 
         post.clearImages();
@@ -198,7 +214,7 @@ public class PostService {
     @Transactional
     public void requestApproval(Long postId, Member user) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("게시글 없음"));
+                .orElseThrow(() -> new BoardException("존재하지 않는 게시글입니다."));
         if (!post.getAuthor().getId().equals(user.getId())) {
             throw new BoardException("본인 글만 승인 요청 가능");
         }
@@ -214,7 +230,7 @@ public class PostService {
     @Transactional
     public void cancelApproval(Long postId, Member user) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("게시글 없음"));
+                .orElseThrow(() -> new BoardException("존재하지 않는 게시글입니다."));
         if (!post.getAuthor().getId().equals(user.getId())) {
             throw new BoardException("본인 글만 승인 요청 가능");
         }

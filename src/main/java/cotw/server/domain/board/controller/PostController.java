@@ -6,6 +6,7 @@ import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
 import cotw.server.domain.board.entity.PostVisibility;
+import cotw.server.domain.board.exception.BoardException;
 import cotw.server.domain.board.service.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -80,7 +81,7 @@ public class PostController {
     @PatchMapping("/{postId}")
     public ResponseEntity<Void> updatePost(@AuthenticationPrincipal CustomUserDetails principal,
                                            @PathVariable Long postId,
-                                           @RequestBody PostUpdateRequestDto dto) {
+                                           @Valid @RequestBody PostUpdateRequestDto dto) {
         postService.updatePost(postId, dto, principal.getUsername());
         return ResponseEntity.ok().build();
     }
@@ -106,9 +107,13 @@ public class PostController {
      * 이미지 업로드
      */
     @PostMapping("/upload")
-    public Map<String, String> uploadImage(@RequestPart("file") MultipartFile file) throws IOException {
-        String imageUrl = postService.upload(file);
-        return Map.of("url", imageUrl);
+    public Map<String, String> uploadImage(@RequestPart("file") MultipartFile file) {
+        try {
+            String imageUrl = postService.upload(file);
+            return Map.of("url", imageUrl);
+        } catch (IOException e) {
+            throw new BoardException("이미지 업로드 중 오류가 발생했습니다.");
+        }
     }
 
     // 승인 요청
@@ -118,7 +123,7 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails principal
     ) {
         postService.requestApproval(postId, principal.getMember());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     // 승인 요청 취소
@@ -128,7 +133,7 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails principal
     ) {
         postService.cancelApproval(postId, principal.getMember());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
 }
