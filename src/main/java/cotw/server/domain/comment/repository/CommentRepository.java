@@ -11,7 +11,7 @@ import java.util.List;
 public interface CommentRepository extends JpaRepository<Comment, Long>, JpaSpecificationExecutor<Comment> {
 
 
-public interface CommentRepository extends JpaRepository<Comment, Long> {
+
 
     // ===== 사용자: 최신순 =====
     @Query(value = """

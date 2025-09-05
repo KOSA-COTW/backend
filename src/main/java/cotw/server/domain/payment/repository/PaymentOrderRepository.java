@@ -93,6 +93,7 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     @Query(value = """
         select new cotw.server.domain.admin.dto.response.AdminDonationListItemResponse(
             po.id,
+            m.email,
             m.name,
             p.title,
             po.amount,
