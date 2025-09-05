@@ -1,12 +1,18 @@
 package cotw.server.domain.payment.repository;
 
+import cotw.server.domain.admin.dto.response.AdminDonationListItemResponse;
+import cotw.server.domain.admin.dto.response.AdminTopDonorProjection;
 import cotw.server.domain.admin.dto.response.AdminTopDonorResponse;
+import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.payment.entity.PaymentOrder;
+import cotw.server.domain.payment.entity.PaymentStatus;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import cotw.server.domain.payment.entity.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -20,18 +26,24 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     List<PaymentOrder> findByMemberIdOrderByCreatedAtDesc(Long memberId);
     List<PaymentOrder> findByPostIdOrderByCreatedAtDesc(Long postId);
     boolean existsByOrderId(String orderId);
+    boolean existsByPostId(Long postId);
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        update PaymentOrder p
+           set p.member = :deletedUser
+         where p.member.id in :memberIds
+    """)
+    int reassignMemberToDeleted(@Param("memberIds") List<Long> memberIds,
+                                @Param("deletedUser") Member deletedUser);
 
-    // ===== 관리자 통계 =====
-
-    /** 총 기부액 (성공 건만: PaymentStatus.DONE) */
+    // ===== 기존 관리자 통계 =====
     @Query("""
         select coalesce(sum(po.amount), 0)
           from PaymentOrder po
          where po.status = cotw.server.domain.payment.entity.PaymentStatus.DONE
     """)
     long sumAllDone();
-
 
     @Query("""
         select new cotw.server.domain.admin.dto.response.AdminTopDonorResponse(
@@ -46,8 +58,62 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     """)
     List<AdminTopDonorResponse> findTopDonors(Pageable pageable);
 
-    /** 편의 메서드: 상위 N명 */
     default List<AdminTopDonorResponse> findTopDonors(int limit) {
         return findTopDonors(PageRequest.of(0, limit));
     }
+
+    // ===== 신규 대시보드 =====
+
+    long countByStatus(PaymentStatus status);
+
+    @Query("""
+        select count(distinct po.member.id)
+          from PaymentOrder po
+         where po.status = :status
+    """)
+    long countDistinctMemberByStatus(@Param("status") PaymentStatus status);
+
+    @Query("""
+        select new cotw.server.domain.admin.dto.response.AdminTopDonorProjection(
+            po.member.name,
+            po.member.email,
+            sum(po.amount),
+            count(po),
+            max(po.createdAt)
+        )
+          from PaymentOrder po
+         where po.status = cotw.server.domain.payment.entity.PaymentStatus.DONE
+         group by po.member.name, po.member.email
+         order by sum(po.amount) desc
+    """)
+    List<AdminTopDonorProjection> findTopDonorProjections(Pageable pageable);
+
+    @Query(value = """
+        select new cotw.server.domain.admin.dto.response.AdminDonationListItemResponse(
+            po.id,
+            m.name,
+            p.title,
+            po.amount,
+            po.status,
+            po.paymentMethod,
+            po.createdAt
+        )
+          from PaymentOrder po
+          join po.member m
+          join po.post p
+         where (:search is null or m.name like concat('%', :search, '%') or p.title like concat('%', :search, '%'))
+           and (:status is null or po.status = :status)
+         order by po.createdAt desc
+    """,
+            countQuery = """
+        select count(po)
+          from PaymentOrder po
+          join po.member m
+          join po.post p
+         where (:search is null or m.name like concat('%', :search, '%') or p.title like concat('%', :search, '%'))
+           and (:status is null or po.status = :status)
+    """)
+    Page<AdminDonationListItemResponse> searchDonations(@Param("search") String search,
+                                                        @Param("status") PaymentStatus status,
+                                                        Pageable pageable);
 }
