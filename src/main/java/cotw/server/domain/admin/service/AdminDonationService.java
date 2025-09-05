@@ -42,7 +42,12 @@ public class AdminDonationService {
 
     public AdminDonationListResponse getDonations(int page, int size, String search, String status) {
         PaymentStatus paymentStatus = parseStatus(status);
-        String keyword = (search != null && !search.isBlank()) ? search : null;
+
+        // ✅ 여기서 % ... % 를 미리 만들고 소문자로 통일
+        String keyword = (search != null && !search.isBlank())
+                ? "%" + search.trim().toLowerCase() + "%"
+                : null;
+
         Page<AdminDonationListItemResponse> result =
                 paymentOrderRepository.searchDonations(keyword, paymentStatus, PageRequest.of(page - 1, size));
         return new AdminDonationListResponse(result.getContent(), result.getTotalElements());

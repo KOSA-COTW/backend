@@ -88,6 +88,7 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     """)
     List<AdminTopDonorProjection> findTopDonorProjections(Pageable pageable);
 
+    // ✅ concat 제거, lower(...) like :search 로 변경
     @Query(value = """
         select new cotw.server.domain.admin.dto.response.AdminDonationListItemResponse(
             po.id,
@@ -101,7 +102,7 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
           from PaymentOrder po
           join po.member m
           join po.post p
-         where (:search is null or m.name like concat('%', :search, '%') or p.title like concat('%', :search, '%'))
+         where (:search is null or lower(m.name) like :search or lower(p.title) like :search)
            and (:status is null or po.status = :status)
          order by po.createdAt desc
     """,
@@ -110,7 +111,7 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
           from PaymentOrder po
           join po.member m
           join po.post p
-         where (:search is null or m.name like concat('%', :search, '%') or p.title like concat('%', :search, '%'))
+         where (:search is null or lower(m.name) like :search or lower(p.title) like :search)
            and (:status is null or po.status = :status)
     """)
     Page<AdminDonationListItemResponse> searchDonations(@Param("search") String search,
