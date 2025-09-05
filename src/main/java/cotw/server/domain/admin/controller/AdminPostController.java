@@ -1,8 +1,12 @@
 package cotw.server.domain.admin.controller;
 
 import cotw.server.common.jwt.CustomUserDetails;
+import cotw.server.domain.admin.dto.request.AdminPostPageRequestDTO;
+import cotw.server.domain.admin.dto.response.AdminPostCountResponseDTO;
 import cotw.server.domain.admin.dto.response.AdminPostListResponseDto;
+import cotw.server.domain.admin.dto.response.AdminPostPageResponseDTO;
 import cotw.server.domain.admin.service.AdminPostService;
+import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.PostVisibility;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -51,11 +55,38 @@ public class AdminPostController {
     }
 
     /**
-     * 전체 게시글 조회
+     * 전체 게시글 조회 (페이징, 필터링, 정렬)
      */
     @GetMapping
-    public ResponseEntity<List<AdminPostListResponseDto>> getAllPosts() {
-        return ResponseEntity.ok(adminPostService.getAllPosts());
+    public ResponseEntity<AdminPostPageResponseDTO> getAllPosts(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) PostVisibility visibility,
+            @RequestParam(required = false) Category category,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String authorName,
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection) {
+        
+        AdminPostPageRequestDTO request = new AdminPostPageRequestDTO();
+        request.setPage(page);
+        request.setLimit(limit);
+        request.setVisibility(visibility);
+        request.setCategory(category);
+        request.setTitle(title);
+        request.setAuthorName(authorName);
+        request.setSortBy(sortBy);
+        request.setSortDirection(sortDirection);
+        
+        return ResponseEntity.ok(adminPostService.getAllPosts(request));
+    }
+
+    /**
+     * 게시글 개수 통계 조회
+     */
+    @GetMapping("/count")
+    public ResponseEntity<AdminPostCountResponseDTO> getPostCounts() {
+        return ResponseEntity.ok(adminPostService.getPostCounts());
     }
 
     /**
