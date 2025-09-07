@@ -37,6 +37,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findEmailById(Long id);
 
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
     @Query("select m.id as id, m.email as email from Member m where m.id in :ids")
     List<MemberEmailProjection> findEmailsByIdIn(@Param("ids") List<Long> ids);
 
@@ -63,4 +65,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
                                @Param("role") Role role,
                                @Param("status") AccountStatus status,
                                Pageable pageable);
+
+    // ✅ 전체 회원 수 (탈퇴 회원 제외)
+    @Query("select count(m) from Member m where m.status <> cotw.server.domain.member.entity.AccountStatus.DELETED")
+    long countActiveMembers();
 }
