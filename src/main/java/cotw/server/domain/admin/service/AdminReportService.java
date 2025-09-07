@@ -1,22 +1,21 @@
 package cotw.server.domain.admin.service;
 
-import cotw.server.domain.admin.dto.request.AdminReportBulkActionRequest;
-import cotw.server.domain.admin.dto.response.AdminReportDetailResponse;
-import cotw.server.domain.admin.dto.response.AdminReportItemResponse;
-import cotw.server.domain.admin.dto.response.AdminDashboardSummaryResponse;
+import cotw.server.domain.admin.dto.request.AdminCommentSearchRequest;
+import cotw.server.domain.admin.dto.response.AdminCommentRowResponse;
+import cotw.server.domain.admin.dto.response.AdminReportLogResponse;
+import cotw.server.domain.board.entity.Comment;
 import cotw.server.domain.comment.entity.ReportReason;
 import cotw.server.domain.comment.repository.CommentReportRepository;
 import cotw.server.domain.comment.repository.CommentRepository;
-import cotw.server.domain.board.entity.Comment;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.*;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @Service
@@ -24,111 +23,212 @@ import java.util.*;
 @Transactional
 public class AdminReportService {
 
-    private final CommentRepository commentRepo;
-    private final CommentReportRepository reportRepo;
+    private final CommentRepository commentRepository;
+    private final CommentReportRepository reportRepository;
 
-    // ===== 목록/상세 =====
-
+    // ===== 목록 =====
     @Transactional(readOnly = true)
-    public Page<AdminReportItemResponse> list(String status, ReportReason reason,
-                                              LocalDateTime from, LocalDateTime to,
-                                              Pageable pageable) {
-        String s = status == null ? "ALL" : status.toUpperCase();
-        return switch (s) {
-            case "PENDING" -> commentRepo.findAdminPending(reason, from, to, pageable)
-                    .map(this::toItem);
-            case "EXPIRED" -> commentRepo.findAdminExpired(reason, from, to, pageable)
-                    .map(this::toItem);
-            case "HIDDEN" -> commentRepo.findAdminHidden(reason, from, to, pageable)
-                    .map(this::toItem);
-            default -> commentRepo.findAdminAll(reason, from, to, pageable)
-                    .map(this::toItem);
+    public Page<AdminCommentRowResponse> list(AdminCommentSearchRequest q) {
+        int page = Math.max(1, Optional.ofNullable(q.getPage()).orElse(1)) - 1; // 0-base
+        int size = Math.max(1, Optional.ofNullable(q.getSize()).orElse(10));
+
+        Sort sort = switch (Optional.ofNullable(q.getSort()).orElse("REPORT_DESC")) {
+            case "DATE_ASC"  -> Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
+            case "DATE_DESC" -> Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+            default          -> Sort.by(Sort.Order.desc("reportCount"), Sort.Order.desc("id"));
+        };
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Specification<Comment> spec = specFrom(q);
+        return commentRepository.findAll(spec, pageable)
+                .map(this::toRow);
+    }
+
+    private Specification<Comment> specFrom(AdminCommentSearchRequest q) {
+        return (root, cq, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> ps = new ArrayList<>();
+
+            // ✅ 공통: 삭제된 댓글 제외
+            ps.add(cb.isNull(root.get("deletedAt")));
+
+            // HIDDEN / EXPIRED / REPORTED / ALL / onlyPending
+            String status = Optional.ofNullable(q.getStatus()).orElse("ALL");
+            switch (status) {
+                case "HIDDEN" -> ps.add(cb.isFalse(root.get("isPublic")));
+                case "EXPIRED" -> {
+                    ps.add(cb.isFalse(root.get("isPublic")));
+                    ps.add(cb.isNotNull(root.get("moderationDueAt")));
+                    ps.add(cb.lessThan(root.get("moderationDueAt"), LocalDateTime.now()));
+                }
+                case "REPORTED" -> {
+                    // ✅ 활성 신고만 기준으로 필터링
+                    var sub = cq.subquery(Long.class);
+                    var r = sub.from(cotw.server.domain.comment.entity.CommentReport.class);
+                    sub.select(cb.literal(1L));
+                    sub.where(
+                            cb.equal(r.get("comment").get("id"), root.get("id")),
+                            cb.isNull(r.get("clearedAt"))
+                    );
+                    ps.add(cb.exists(sub));
+                }
+                default -> {} // ALL
+            }
+
+            if (Boolean.TRUE.equals(q.getOnlyPending())) {
+                ps.add(cb.isFalse(root.get("isPublic")));
+                ps.add(cb.isNotNull(root.get("moderationDueAt")));
+                ps.add(cb.greaterThanOrEqualTo(root.get("moderationDueAt"), LocalDateTime.now()));
+            }
+
+            // minReports
+            Integer min = Optional.ofNullable(q.getMinReports()).orElse(0);
+            if (min > 0) {
+                var sub = cq.subquery(Long.class);
+                var r = sub.from(cotw.server.domain.comment.entity.CommentReport.class);
+                sub.select(cb.count(r));
+                sub.where(
+                        cb.equal(r.get("comment").get("id"), root.get("id")),
+                        cb.isNull(r.get("clearedAt"))
+                );
+                ps.add(cb.greaterThanOrEqualTo(sub.getSelection().as(Integer.class), min));
+            }
+
+            // reason exists (활성 신고만 집계 기준)
+            if (q.getReason() != null && !q.getReason().isBlank()) {
+                var sub = cq.subquery(Long.class);
+                var r = sub.from(cotw.server.domain.comment.entity.CommentReport.class);
+                sub.select(cb.literal(1L));
+                sub.where(
+                        cb.equal(r.get("comment").get("id"), root.get("id")),
+                        cb.equal(r.get("reason"), ReportReason.valueOf(q.getReason())),
+                        cb.isNull(r.get("clearedAt"))
+                );
+                ps.add(cb.exists(sub));
+            }
+
+            // 기간 필터(신고 생성일 기준)
+            LocalDateTime from = parseDateTime(q.getFrom());
+            LocalDateTime to   = parseDateTime(q.getTo());
+            if (from != null) {
+                var sub = cq.subquery(Long.class);
+                var r = sub.from(cotw.server.domain.comment.entity.CommentReport.class);
+                sub.select(cb.literal(1L));
+                sub.where(cb.equal(r.get("comment").get("id"), root.get("id")),
+                        cb.greaterThanOrEqualTo(r.get("createdAt"), from));
+                ps.add(cb.exists(sub));
+            }
+            if (to != null) {
+                var sub = cq.subquery(Long.class);
+                var r = sub.from(cotw.server.domain.comment.entity.CommentReport.class);
+                sub.select(cb.literal(1L));
+                sub.where(cb.equal(r.get("comment").get("id"), root.get("id")),
+                        cb.lessThan(r.get("createdAt"), to));
+                ps.add(cb.exists(sub));
+            }
+
+            // keyword: content / author.email / post.title
+            if (q.getKeyword() != null && !q.getKeyword().isBlank()) {
+                String like = "%" + q.getKeyword().trim() + "%";
+                var post = root.join("post");
+                var mem  = root.join("member");
+                ps.add(cb.or(
+                        cb.like(root.get("content"), like),
+                        cb.like(mem.get("email"), like),
+                        cb.like(post.get("title"), like)
+                ));
+            }
+
+            return cb.and(ps.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };
     }
 
-    @Transactional(readOnly = true)
-    public AdminReportDetailResponse detail(Long commentId) {
-        Comment c = get(commentId);
-        Map<ReportReason, Long> breakdown = breakdown(commentId);
-        LocalDateTime lastReportedAt = reportRepo.findLastReportedAt(commentId).orElse(null);
-        return new AdminReportDetailResponse(
-                c.getId(), c.getPost().getId(), c.getMember().getId(),
-                c.getContent(), c.getReportCount(), !c.isPublic(),
-                c.getModerationDueAt(), c.getCreatedAt(), c.getUpdatedAt(),
-                lastReportedAt, breakdown
-        );
-    }
-
-    // ===== 조치 =====
-
-    public void restore(Long commentId) {
-        Comment c = get(commentId);
-        c.restoreByAdmin(); // 신고수 0, 공개 전환, 삭제/만료 초기화
-    }
-
-    public void softDelete(Long commentId) {
-        Comment c = get(commentId);
-        c.delete(); // 소프트 삭제 + 비공개
-    }
-
-    public void reset(Long commentId) {
-        Comment c = get(commentId);
-        c.makePublic();
-        // 신고수 0으로 초기화 (로그는 유지).
-        c.applyReportTally(0);
-    }
-
-    public void bulk(AdminReportBulkActionRequest req) {
-        for (Long id : req.commentIds()) {
-            switch (req.action()) {
-                case RESTORE -> restore(id);
-                case DELETE -> softDelete(id);
-                case RESET -> reset(id);
-            }
+    private LocalDateTime parseDateTime(String s) {
+        if (s == null || s.isBlank()) return null;
+        try {
+            if (s.length() == 10) return LocalDate.parse(s).atStartOfDay();
+            return LocalDateTime.parse(s);
+        } catch (DateTimeParseException e) {
+            return null;
         }
     }
 
-    // ===== 대시보드 요약 =====
+    private AdminCommentRowResponse toRow(Comment c) {
+        // ✅ 활성 신고 수 집계
+        int activeCount = (int) reportRepository.countActiveByCommentId(c.getId());
 
-    @Transactional(readOnly = true)
-    public AdminDashboardSummaryResponse summary() {
-        LocalDate today = LocalDate.now();
-        LocalDateTime start = today.atStartOfDay();
-        LocalDateTime end = today.plusDays(1).atStartOfDay();
-
-        long todayReports = reportRepo.countByCreatedAtBetween(start, end);
-        long pendingHidden = commentRepo.countAdminPending();
-        long expiredHidden = commentRepo.countAdminExpired();
-        long totalComments = commentRepo.count();
-        return new AdminDashboardSummaryResponse(todayReports, pendingHidden, expiredHidden, totalComments);
-    }
-
-    // ===== 내부 유틸 =====
-
-    private Comment get(Long id) {
-        return commentRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("댓글을 찾을 수 없습니다: " + id));
-    }
-
-    private AdminReportItemResponse toItem(Comment c) {
-        LocalDateTime lastReportedAt = reportRepo.findLastReportedAt(c.getId()).orElse(null);
-        String preview = c.getContent();
-        if (preview != null && preview.length() > 80) preview = preview.substring(0, 80) + "…";
-        return new AdminReportItemResponse(
-                c.getId(), c.getPost().getId(), c.getMember().getId(),
-                preview, c.getReportCount(), !c.isPublic(), c.getModerationDueAt(),
-                c.getCreatedAt(), lastReportedAt
-        );
-    }
-
-    private Map<ReportReason, Long> breakdown(Long commentId) {
-        List<Object[]> rows = reportRepo.countByReason(commentId);
-        Map<ReportReason, Long> map = new EnumMap<>(ReportReason.class);
-        for (Object[] r : rows) {
-            ReportReason reason = (ReportReason) r[0];
-            Long cnt = (Long) r[1];
-            map.put(reason, cnt);
+        // ✅ 대표 사유 집계
+        String top = null;
+        int max = -1;
+        for (Object[] row : reportRepository.countActiveByReason(c.getId())) {
+            String reason = String.valueOf(row[0]);
+            int cnt = ((Number) row[1]).intValue();
+            if (cnt > max) { max = cnt; top = reason; }
         }
-        return map;
+
+        return AdminCommentRowResponse.builder()
+                .id(c.getId())
+                .content(c.getContent())
+                .authorEmail(c.getMember().getEmail())
+                .postTitle(c.getPost().getTitle())
+                .isPublic(c.isPublic())
+                .reportCount(activeCount)
+                .topReason(top)
+                .createdAt(c.getCreatedAt())
+                .moderationDueAt(c.getModerationDueAt())
+                .build();
+    }
+
+    // ===== 단건/벌크 액션 =====
+    public void setVisibility(Long id, boolean visible) {
+        Comment c = find(id);
+        if (visible) { c.makePublic(); } else { c.makePrivate(); }
+    }
+
+    public void resetReports(Long id) {
+        Comment c = find(id);
+        reportRepository.clearByCommentId(id);
+        int total = (int) reportRepository.countActiveByCommentId(id);
+        c.applyReportTally(total);
+        if (total == 0) c.restoreByAdmin();
+        // ✅ DB에 즉시 반영
+        commentRepository.saveAndFlush(c);
+    }
+
+    public void bulkResetReports(List<Long> ids) {
+        ids.forEach(this::resetReports);
+    }
+
+    public void deleteOne(Long id) {
+        Comment c = find(id);
+        c.delete(); // soft delete
+    }
+
+    public void bulkDelete(List<Long> ids) {
+        ids.forEach(this::deleteOne);
+    }
+
+    public void bulkVisibility(List<Long> ids, boolean visible) {
+        ids.forEach(id -> setVisibility(id, visible));
+    }
+
+    // ===== 로그 조회 =====
+    @Transactional(readOnly = true)
+    public List<AdminReportLogResponse> reportLogs(Long commentId) {
+        return reportRepository.findByCommentIdAndClearedAtIsNullOrderByCreatedAtDesc(commentId)
+                .stream()
+                .map(r -> new AdminReportLogResponse(
+                        r.getId(),
+                        r.getMember().getEmail(),
+                        r.getReason().name(),
+                        r.getDetail(),
+                        r.getCreatedAt()
+                ))
+                .toList();
+    }
+
+    // ===== util =====
+    private Comment find(Long id) {
+        return commentRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("comment not found: " + id));
     }
 }
