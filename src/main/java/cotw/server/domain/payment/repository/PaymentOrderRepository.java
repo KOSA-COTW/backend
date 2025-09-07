@@ -16,6 +16,7 @@ import org.springframework.data.repository.query.Param;
 
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,10 +24,15 @@ import java.util.Optional;
 public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long> {
 
     Optional<PaymentOrder> findByOrderId(String orderId);
+
     Optional<PaymentOrder> findByPaymentKey(String paymentKey);
+
     List<PaymentOrder> findByMemberIdOrderByCreatedAtDesc(Long memberId);
+
     List<PaymentOrder> findByPostIdOrderByCreatedAtDesc(Long postId);
+
     boolean existsByOrderId(String orderId);
+
     boolean existsByPostId(Long postId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -119,5 +125,50 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     Page<AdminDonationListItemResponse> searchDonations(@Param("search") String search,
                                                         @Param("status") PaymentStatus status,
                                                         Pageable pageable);
+
+    // ===== 대시보드: 기간별 집계 =====
+
+    @Query("""
+        select coalesce(sum(po.amount), 0)
+          from PaymentOrder po
+         where po.status = cotw.server.domain.payment.entity.PaymentStatus.DONE
+           and po.createdAt >= :start and po.createdAt < :end
+    """)
+    long sumDoneBetween(@Param("start") LocalDateTime start,
+                        @Param("end") LocalDateTime end);
+
+    @Query("""
+        select count(po)
+          from PaymentOrder po
+         where po.status = :status
+           and po.createdAt >= :start and po.createdAt < :end
+    """)
+    long countByStatusBetween(@Param("status") PaymentStatus status,
+                              @Param("start") LocalDateTime start,
+                              @Param("end") LocalDateTime end);
+
+    @Query("""
+        select count(distinct po.member.id)
+          from PaymentOrder po
+         where po.status = :status
+           and po.createdAt >= :start and po.createdAt < :end
+    """)
+    long countDistinctMemberByStatusBetween(@Param("status") PaymentStatus status,
+                                            @Param("start") LocalDateTime start,
+                                            @Param("end") LocalDateTime end);
+
+
+    @Query("""
+        select cast(po.createdAt as date), sum(po.amount)
+          from PaymentOrder po
+         where po.status = cotw.server.domain.payment.entity.PaymentStatus.DONE
+           and po.createdAt >= :start and po.createdAt < :end
+         group by cast(po.createdAt as date)
+         order by cast(po.createdAt as date)
+    """)
+    List<Object[]> sumDailyBetween(@Param("start") LocalDateTime start,
+                                   @Param("end") LocalDateTime end);
+
+    List<PaymentOrder> findTop5ByStatusOrderByCreatedAtDesc(PaymentStatus status);
 
 }
