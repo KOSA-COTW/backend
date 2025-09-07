@@ -16,6 +16,7 @@ import org.springframework.data.repository.query.Param;
 
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -119,5 +120,48 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     Page<AdminDonationListItemResponse> searchDonations(@Param("search") String search,
                                                         @Param("status") PaymentStatus status,
                                                         Pageable pageable);
+    // ===== 대시보드: 기간별 집계 =====
+
+    @Query("""
+        select coalesce(sum(po.amount), 0)
+          from PaymentOrder po
+         where po.status = cotw.server.domain.payment.entity.PaymentStatus.DONE
+           and po.createdAt >= :start and po.createdAt < :end
+    """)
+    long sumDoneBetween(@Param("start") LocalDateTime start,
+                        @Param("end") LocalDateTime end);
+
+    @Query("""
+        select count(po)
+          from PaymentOrder po
+         where po.status = :status
+           and po.createdAt >= :start and po.createdAt < :end
+    """)
+    long countByStatusBetween(@Param("status") PaymentStatus status,
+                              @Param("start") LocalDateTime start,
+                              @Param("end") LocalDateTime end);
+
+    @Query("""
+        select count(distinct po.member.id)
+          from PaymentOrder po
+         where po.status = :status
+           and po.createdAt >= :start and po.createdAt < :end
+    """)
+    long countDistinctMemberByStatusBetween(@Param("status") PaymentStatus status,
+                                            @Param("start") LocalDateTime start,
+                                            @Param("end") LocalDateTime end);
+
+    @Query("""
+        select function('date', po.createdAt) as day, sum(po.amount)
+          from PaymentOrder po
+         where po.status = cotw.server.domain.payment.entity.PaymentStatus.DONE
+           and po.createdAt >= :start and po.createdAt < :end
+         group by function('date', po.createdAt)
+         order by day
+    """)
+    List<Object[]> sumDailyBetween(@Param("start") LocalDateTime start,
+                                   @Param("end") LocalDateTime end);
+
+    List<PaymentOrder> findTop5ByStatusOrderByCreatedAtDesc(PaymentStatus status);
 
 }
