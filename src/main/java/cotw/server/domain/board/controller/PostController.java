@@ -5,11 +5,13 @@ import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
+import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.PostVisibility;
 import cotw.server.domain.board.exception.BoardException;
 import cotw.server.domain.board.service.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -134,6 +136,27 @@ public class PostController {
     ) {
         postService.cancelApproval(postId, principal.getMember());
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/paged")
+    public ResponseEntity<Page<PostListResponseDto>> getApprovedPostsPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String authorName,
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            @RequestParam(defaultValue = "") String fundStatus
+    ) {
+        return ResponseEntity.ok(
+                postService.getApprovedPostsPaged(
+                        category, title, authorName,
+                        sortBy, sortDirection,
+                        fundStatus,
+                        page, size
+                )
+        );
     }
 
 }

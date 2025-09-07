@@ -6,6 +6,7 @@ import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
+import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Image;
 import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.board.entity.PostVisibility;
@@ -18,6 +19,7 @@ import cotw.server.domain.member.repository.MemberRepository;
 import cotw.server.domain.payment.repository.PaymentOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -247,6 +249,25 @@ public class PostService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public Page<PostListResponseDto> getApprovedPostsPaged(
+            String category,
+            String title,
+            String authorName,
+            String sortBy,
+            String sortDirection,
+            String fundStatus,
+            int page,
+            int size
+    ) {
+        Page<Post> posts = postRepository.findAllApprovedWithFilters(
+                category, title, authorName,
+                sortBy, sortDirection,
+                fundStatus,
+                PageRequest.of(page, size)
+        );
+        return posts.map(PostListResponseDto::new);
+    }
 
 
 }
