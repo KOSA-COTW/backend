@@ -24,10 +24,15 @@ import java.util.Optional;
 public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long> {
 
     Optional<PaymentOrder> findByOrderId(String orderId);
+
     Optional<PaymentOrder> findByPaymentKey(String paymentKey);
+
     List<PaymentOrder> findByMemberIdOrderByCreatedAtDesc(Long memberId);
+
     List<PaymentOrder> findByPostIdOrderByCreatedAtDesc(Long postId);
+
     boolean existsByOrderId(String orderId);
+
     boolean existsByPostId(Long postId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -120,6 +125,7 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     Page<AdminDonationListItemResponse> searchDonations(@Param("search") String search,
                                                         @Param("status") PaymentStatus status,
                                                         Pageable pageable);
+
     // ===== 대시보드: 기간별 집계 =====
 
     @Query("""
@@ -151,13 +157,14 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
                                             @Param("start") LocalDateTime start,
                                             @Param("end") LocalDateTime end);
 
+
     @Query("""
-        select function('date', po.createdAt) as day, sum(po.amount)
+        select cast(po.createdAt as date), sum(po.amount)
           from PaymentOrder po
          where po.status = cotw.server.domain.payment.entity.PaymentStatus.DONE
            and po.createdAt >= :start and po.createdAt < :end
-         group by function('date', po.createdAt)
-         order by day
+         group by cast(po.createdAt as date)
+         order by cast(po.createdAt as date)
     """)
     List<Object[]> sumDailyBetween(@Param("start") LocalDateTime start,
                                    @Param("end") LocalDateTime end);

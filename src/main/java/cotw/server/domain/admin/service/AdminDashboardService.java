@@ -97,9 +97,7 @@ public class AdminDashboardService {
         // 일간 기부액 추이
         Map<LocalDate, Long> dailyMap = new HashMap<>();
         for (Object[] row : paymentOrderRepository.sumDailyBetween(from, to)) {
-            LocalDate day = (row[0] instanceof LocalDate)
-                    ? (LocalDate) row[0]
-                    : ((java.sql.Date) row[0]).toLocalDate();
+            LocalDate day = ((java.sql.Date) row[0]).toLocalDate(); // ✅ 항상 java.sql.Date로 변환
             dailyMap.put(day, ((Number) row[1]).longValue());
         }
         List<String> labels = new ArrayList<>();
