@@ -377,4 +377,28 @@ public interface CommentRepository extends JpaRepository<Comment, Long>, JpaSpec
            and c.deletedAt is null
     """)
     long countAdminReported();
+
+    @Query("""
+    select count(c)
+    from Comment c
+    where c.isPublic = false
+      and c.deletedAt is null
+      and c.moderationDueAt is not null
+      and c.moderationDueAt <= :dueAt
+""")
+    long countDueIn48h(@Param("dueAt") java.time.LocalDateTime dueAt);
+
+
+    @Query("""
+    select count(distinct c.id)
+    from Comment c
+    where c.deletedAt is null
+      and exists (
+          select 1
+          from CommentReport r
+          where r.comment.id = c.id
+            and r.clearedAt is null
+      )
+""")
+    long countReportedComments();
 }
