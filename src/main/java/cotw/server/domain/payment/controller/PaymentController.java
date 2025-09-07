@@ -19,7 +19,7 @@ public class PaymentController {
 
     private final PaymentService paymentService;
     
-    @Value("${app.front-redirect-base}")
+    @Value("${app.frontend-url}")
     private String frontendBaseUrl;
 
     @PostMapping
