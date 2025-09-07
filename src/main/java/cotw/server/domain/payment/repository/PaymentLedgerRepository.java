@@ -41,5 +41,25 @@ public interface PaymentLedgerRepository extends JpaRepository<PaymentLedger, Lo
     Long sumDoneByDateRange(@Param("start") LocalDateTime start,
                             @Param("end") LocalDateTime end);
 
+    @Query("""
+           select p.memberId, p.memberName, coalesce(sum(p.amount), 0) as totalAmount
+           from PaymentLedger p
+           where p.status = 'DONE'
+           group by p.memberId, p.memberName
+           order by totalAmount desc
+           limit :limit
+           """)
+    List<Object[]> findTopDonorsByAmount(@Param("limit") int limit);
+
+    @Query("""
+           select post.category, coalesce(sum(p.amount), 0) as totalAmount
+           from PaymentLedger p
+           join Post post on p.postId = post.id
+           where p.status = 'DONE'
+           group by post.category
+           order by totalAmount desc
+           """)
+    List<Object[]> findDonationAmountByCategory();
+
 
 }
