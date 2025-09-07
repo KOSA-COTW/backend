@@ -2,6 +2,9 @@ package cotw.server.domain.member.repository;
 
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.ProviderType;
+import cotw.server.domain.member.entity.AccountStatus;
+import cotw.server.domain.member.entity.Role;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -36,4 +39,28 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     @Query("select m.id as id, m.email as email from Member m where m.id in :ids")
     List<MemberEmailProjection> findEmailsByIdIn(@Param("ids") List<Long> ids);
+
+    @Query(value = """
+        select m from Member m
+        where m.status <> cotw.server.domain.member.entity.AccountStatus.DELETED
+          and ((:keyword is null or :keyword = '') 
+               or lower(m.name) like :keyword 
+               or lower(m.email) like :keyword)
+          and (:role is null or m.role = :role)
+          and (:status is null or m.status = :status)
+        order by m.createdAt desc, m.id desc
+    """,
+            countQuery = """
+        select count(m) from Member m
+        where m.status <> cotw.server.domain.member.entity.AccountStatus.DELETED
+          and ((:keyword is null or :keyword = '') 
+               or lower(m.name) like :keyword 
+               or lower(m.email) like :keyword)
+          and (:role is null or m.role = :role)
+          and (:status is null or m.status = :status)
+    """)
+    Page<Member> searchMembers(@Param("keyword") String keyword,
+                               @Param("role") Role role,
+                               @Param("status") AccountStatus status,
+                               Pageable pageable);
 }
