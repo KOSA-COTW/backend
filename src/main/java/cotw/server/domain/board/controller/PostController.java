@@ -1,14 +1,19 @@
 package cotw.server.domain.board.controller;
 
 import cotw.server.common.jwt.CustomUserDetails;
+import cotw.server.domain.board.dto.request.MyPostPageRequestDTO;
 import cotw.server.domain.board.dto.request.PostCreateRequestDto;
 import cotw.server.domain.board.dto.request.PostUpdateRequestDto;
+import cotw.server.domain.board.dto.response.MyPostPageResponseDTO;
 import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
+import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.PostVisibility;
+import cotw.server.domain.board.exception.BoardException;
 import cotw.server.domain.board.service.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -38,13 +43,30 @@ public class PostController {
     }
 
     /**
-     * 내가 쓴 모든 게시글 조회
+     * 내가 쓴 모든 게시글 조회 (페이징, 필터링, 정렬)
      * - 본인 글은 PRIVATE, PENDING, APPROVED, REJECTED 전부 조회 가능
      */
     @GetMapping("/me")
-    public ResponseEntity<List<PostResponseDto>> getMyPosts(
-            @AuthenticationPrincipal CustomUserDetails principal) {
-        return ResponseEntity.ok(postService.getMyPosts(principal.getUsername()));
+    public ResponseEntity<MyPostPageResponseDTO> getMyPosts(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) PostVisibility visibility,
+            @RequestParam(required = false) Category category,
+            @RequestParam(required = false) String title,
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection) {
+
+        MyPostPageRequestDTO request = new MyPostPageRequestDTO();
+        request.setPage(page);
+        request.setLimit(limit);
+        request.setVisibility(visibility);
+        request.setCategory(category);
+        request.setTitle(title);
+        request.setSortBy(sortBy);
+        request.setSortDirection(sortDirection);
+
+        return ResponseEntity.ok(postService.getMyPosts(principal.getUsername(), request));
     }
 
     /**
@@ -80,7 +102,7 @@ public class PostController {
     @PatchMapping("/{postId}")
     public ResponseEntity<Void> updatePost(@AuthenticationPrincipal CustomUserDetails principal,
                                            @PathVariable Long postId,
-                                           @RequestBody PostUpdateRequestDto dto) {
+                                           @Valid @RequestBody PostUpdateRequestDto dto) {
         postService.updatePost(postId, dto, principal.getUsername());
         return ResponseEntity.ok().build();
     }
@@ -106,9 +128,13 @@ public class PostController {
      * 이미지 업로드
      */
     @PostMapping("/upload")
-    public Map<String, String> uploadImage(@RequestPart("file") MultipartFile file) throws IOException {
-        String imageUrl = postService.upload(file);
-        return Map.of("url", imageUrl);
+    public Map<String, String> uploadImage(@RequestPart("file") MultipartFile file) {
+        try {
+            String imageUrl = postService.upload(file);
+            return Map.of("url", imageUrl);
+        } catch (IOException e) {
+            throw new BoardException("이미지 업로드 중 오류가 발생했습니다.");
+        }
     }
 
     // 승인 요청
@@ -118,7 +144,7 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails principal
     ) {
         postService.requestApproval(postId, principal.getMember());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     // 승인 요청 취소
@@ -128,7 +154,28 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails principal
     ) {
         postService.cancelApproval(postId, principal.getMember());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/paged")
+    public ResponseEntity<Page<PostListResponseDto>> getApprovedPostsPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String authorName,
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            @RequestParam(defaultValue = "") String fundStatus
+    ) {
+        return ResponseEntity.ok(
+                postService.getApprovedPostsPaged(
+                        category, title, authorName,
+                        sortBy, sortDirection,
+                        fundStatus,
+                        page, size
+                )
+        );
     }
 
 }

@@ -1,13 +1,12 @@
-package cotw.server.common.security;
+package cotw.server.common.config.security;
 
 import cotw.server.common.OAuth2.CustomOAuth2UserService;
 import cotw.server.common.OAuth2.OAuth2LoginSuccessHandler;
 import cotw.server.common.jwt.*;
 import cotw.server.common.jwt.service.RefreshTokenService;
-import jakarta.servlet.http.HttpServletResponse;
-
 import cotw.server.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -41,6 +40,9 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final MemberStatusPostChecker memberStatusPostChecker;
 
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -56,7 +58,6 @@ public class SecurityConfig {
         return new ProviderManager(provider);
     }
 
-
     /** 커스텀 로그인 필터 (ID/PW → JWT 발급) */
     @Bean
     public LoginFilter loginFilter() throws Exception {
@@ -65,7 +66,7 @@ public class SecurityConfig {
                 jwtUtil,
                 refreshTokenService
         );
-        loginFilter.setFilterProcessesUrl("/auth/login"); // 로그인 엔드포인트
+        loginFilter.setFilterProcessesUrl("/api/auth/login"); // 로그인 엔드포인트
         return loginFilter;
     }
 
@@ -75,7 +76,10 @@ public class SecurityConfig {
         // CORS
         http.cors(cors -> cors.configurationSource(request -> {
             CorsConfiguration config = new CorsConfiguration();
-            config.setAllowedOrigins(List.of("http://localhost:5173"));
+            List<String> allowedOrigins = frontendUrl.contains(",")
+                ? List.of(frontendUrl.split(","))
+                : List.of("http://localhost:5173", frontendUrl);
+            config.setAllowedOrigins(allowedOrigins);
             config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
             config.setAllowedHeaders(List.of("*"));
             config.setExposedHeaders(List.of("Authorization", "access", "X-Access-Token"));
@@ -94,17 +98,22 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/oauth2/**", "/login/oauth2/code/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/", "/auth/**", "/reissue").permitAll()
+                .requestMatchers("/", "/api/auth/login", "/api/auth/signup", "/reissue").permitAll()
                 .requestMatchers("/api/payments/success", "/api/payments/confirm").permitAll()
-                .requestMatchers(HttpMethod.GET, "/info", "/public/donation-total", "/members/dup-check/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/info", "/api/public/donation-total").permitAll()
                 // 소프트 삭제 관련 요청
-                .requestMatchers(HttpMethod.POST, "/deactivate", "/account/recover").permitAll()
-                // 내 정보 변경 관련 요청
-                .requestMatchers(HttpMethod.PATCH, "/editpass", "/changeimage", "/editnickname").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/deactivate", "/api/recover").permitAll()
+
+                .requestMatchers(HttpMethod.PATCH, "/api/editpass", "/api/changeimage", "/api/editnickname").permitAll()
 
                 // 공개 조회
                 .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
+
+                // 댓글 관련 공개 허용
+                .requestMatchers(HttpMethod.GET, "/api/comments").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/comments/reports/reasons").permitAll()
 
                 // 생성 권한
                 .requestMatchers(HttpMethod.POST, "/api/posts").authenticated()

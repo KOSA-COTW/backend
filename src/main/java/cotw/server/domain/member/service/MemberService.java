@@ -9,8 +9,12 @@ import cotw.server.domain.comment.repository.CommentReportRepository;
 import cotw.server.domain.comment.repository.CommentRepository;
 import cotw.server.domain.member.dto.response.DupCheckResponse;
 import cotw.server.domain.member.dto.response.ShowInfoResponse;
+import cotw.server.domain.member.dto.request.SignUpRequest;
+import cotw.server.domain.member.dto.response.ShowInfoResponse;
+import cotw.server.domain.member.dto.response.SignUpResponse;
 import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
+import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberEmailProjection;
 import cotw.server.domain.member.repository.MemberRepository;
 import cotw.server.domain.payment.entity.PaymentLedger;
@@ -51,6 +55,7 @@ public class MemberService {
     private final PostRepository postRepository;
     private final PostService postService;
     private final PaymentOrderRepository paymentOrderRepository;
+
 
     // 간단 이메일/닉네임 검증(프론트 검증과 별개로 백엔드에서도 가볍게 방어)
     private static final Pattern EMAIL_RX = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");

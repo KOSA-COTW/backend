@@ -2,8 +2,8 @@ package cotw.server.domain.board.repository;
 
 import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.Post;
-import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.board.entity.PostVisibility;
+import cotw.server.domain.member.entity.Member;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,6 +21,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findAllByVisibilityStatus(PostVisibility visibilityStatus);
 
     // 특정 작성자의 모든 게시글
+    //todo 마이페이지
     List<Post> findAllByAuthor_Email(String email);
 
     // ID 기반 조회
@@ -65,7 +66,105 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     int anonymizeAuthorByMemberIds(@Param("memberIds") List<Long> memberIds,
                                    @Param("deletedUser") Member deletedUser);
 
-    // 카테고리만 필터링 (상태 상관없이)
-    Page<Post> findByCategory(Category category, Pageable pageable);
+    @Query("""
+   SELECT DISTINCT p
+   FROM Post p
+   LEFT JOIN FETCH p.images
+   WHERE p.id = :id
+   """)
+    Optional<Post> findDetailById(@Param("id") Long id);
+
+    @Query(value = """
+        SELECT p.* FROM post p
+        LEFT JOIN member a ON a.member_id = p.member_id
+        WHERE (COALESCE(:visibility, '') = '' OR p.visibility_status = :visibility)
+        AND (COALESCE(:category, '') = '' OR p.category = :category)
+        AND (COALESCE(:title, '') = '' OR LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%')))
+        AND (COALESCE(:authorName, '') = '' OR LOWER(a.name) LIKE LOWER(CONCAT('%', :authorName, '%')))
+        ORDER BY 
+        CASE WHEN :sortBy = 'date' AND :sortDirection = 'desc' THEN p.created_at END DESC,
+        CASE WHEN :sortBy = 'date' AND :sortDirection = 'asc' THEN p.created_at END ASC,
+        CASE WHEN :sortBy = 'title' AND :sortDirection = 'desc' THEN p.title END DESC,
+        CASE WHEN :sortBy = 'title' AND :sortDirection = 'asc' THEN p.title END ASC
+        """, nativeQuery = true)
+    Page<Post> findAllWithFilters(
+            @Param("visibility") String visibility,
+            @Param("category") String category,
+            @Param("title") String title,
+            @Param("authorName") String authorName,
+            @Param("sortBy") String sortBy,
+            @Param("sortDirection") String sortDirection,
+            Pageable pageable
+    );
+
+    long countByVisibilityStatus(PostVisibility visibilityStatus);
+
+    @Query(value = """
+        SELECT p.* FROM post p
+        LEFT JOIN member a ON a.member_id = p.member_id
+        WHERE a.email = :authorEmail
+        AND (COALESCE(:visibility, '') = '' OR p.visibility_status = :visibility)
+        AND (COALESCE(:category, '') = '' OR p.category = :category)
+        AND (COALESCE(:title, '') = '' OR LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%')))
+        ORDER BY 
+        CASE WHEN :sortBy = 'date' AND :sortDirection = 'desc' THEN p.created_at END DESC,
+        CASE WHEN :sortBy = 'date' AND :sortDirection = 'asc' THEN p.created_at END ASC,
+        CASE WHEN :sortBy = 'title' AND :sortDirection = 'desc' THEN p.title END DESC,
+        CASE WHEN :sortBy = 'title' AND :sortDirection = 'asc' THEN p.title END ASC
+        """, nativeQuery = true)
+    Page<Post> findMyPostsWithFilters(
+            @Param("authorEmail") String authorEmail,
+            @Param("visibility") String visibility,
+            @Param("category") String category,
+            @Param("title") String title,
+            @Param("sortBy") String sortBy,
+            @Param("sortDirection") String sortDirection,
+            Pageable pageable
+    );
+
+    @Query(value = """
+    SELECT p.* 
+    FROM post p
+    LEFT JOIN member a ON a.member_id = p.member_id
+    WHERE p.visibility_status = 'APPROVED'
+      AND (COALESCE(:category, '') = '' OR p.category = :category)
+      AND (COALESCE(:title, '') = '' OR LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%')))
+      AND (COALESCE(:authorName, '') = '' OR LOWER(a.name) LIKE LOWER(CONCAT('%', :authorName, '%')))
+      AND (
+        :fundStatus = '' 
+        OR (:fundStatus = 'ONGOING'  AND p.deadline >= CURRENT_DATE)
+        OR (:fundStatus = 'COMPLETED' AND p.deadline < CURRENT_DATE)
+      )
+    ORDER BY 
+      CASE WHEN :sortBy = 'date' AND :sortDirection = 'desc' THEN p.created_at END DESC,
+      CASE WHEN :sortBy = 'date' AND :sortDirection = 'asc'  THEN p.created_at END ASC,
+      CASE WHEN :sortBy = 'title' AND :sortDirection = 'desc' THEN p.title END DESC,
+      CASE WHEN :sortBy = 'title' AND :sortDirection = 'asc'  THEN p.title END ASC
+    """,
+            countQuery = """
+    SELECT COUNT(*) 
+    FROM post p
+    LEFT JOIN member a ON a.member_id = p.member_id
+    WHERE p.visibility_status = 'APPROVED'
+      AND (COALESCE(:category, '') = '' OR p.category = :category)
+      AND (COALESCE(:title, '') = '' OR LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%')))
+      AND (COALESCE(:authorName, '') = '' OR LOWER(a.name) LIKE LOWER(CONCAT('%', :authorName, '%')))
+      AND (
+        :fundStatus = '' 
+        OR (:fundStatus = 'ONGOING'  AND p.deadline >= CURRENT_DATE)
+        OR (:fundStatus = 'COMPLETED' AND p.deadline < CURRENT_DATE)
+      )
+    """,
+            nativeQuery = true)
+    Page<Post> findAllApprovedWithFilters(
+            @Param("category") String category,
+            @Param("title") String title,
+            @Param("authorName") String authorName,
+            @Param("sortBy") String sortBy,
+            @Param("sortDirection") String sortDirection,
+            @Param("fundStatus") String fundStatus,
+            Pageable pageable
+    );
+
 }
 

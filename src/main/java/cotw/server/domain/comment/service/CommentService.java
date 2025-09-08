@@ -4,8 +4,8 @@ import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.comment.dto.request.CreateCommentRequest;
 import cotw.server.domain.comment.dto.request.UpdateCommentRequest;
 import cotw.server.domain.comment.dto.response.CommentResponse;
-
 import cotw.server.domain.comment.repository.CommentLikeRepository;
+import cotw.server.domain.comment.repository.CommentReportRepository; // ✅ 추가
 import cotw.server.domain.comment.repository.CommentRepository;
 import cotw.server.domain.member.entity.Member;
 import jakarta.persistence.EntityManager;
@@ -28,6 +28,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final EntityManager em;
     private final CommentLikeRepository likeRepository;
+    private final CommentReportRepository reportRepository; // ✅ 주입
 
     // 작성 (JWT의 memberId 사용)
     public CommentResponse create(Long memberId, CreateCommentRequest req) {
@@ -52,7 +53,7 @@ public class CommentService {
     public void delete(Long commentId, Long requesterId, boolean admin) {
         Comment c = get(commentId);
         if (!admin) requireOwner(c, requesterId);
-        c.delete(); // 도메인 메서드로 일관 처리
+        c.delete();
     }
 
     // 목록: 최신순
@@ -69,7 +70,6 @@ public class CommentService {
                 .map(c -> toRes(c, viewerId));  // ✅
     }
 
-
     public void adminDelete(Long commentId) {
         Comment c = get(commentId);
         c.setDeletedAt(LocalDateTime.now());
@@ -85,32 +85,36 @@ public class CommentService {
         if (!Objects.equals(c.getMember().getId(), requesterId))
             throw new AccessDeniedException("권한이 없습니다.");
     }
-    // 기존 toRes 수정: 작성/수정 직후엔 liked=false로 고정(필요 시 오버로드 사용)
+
+    // 작성/수정 직후 → liked=false, alreadyReported=false
     private CommentResponse toRes(Comment c) {
         String email = c.getMember().getEmail();
         return new CommentResponse(
                 c.getId(), c.getPost().getId(), c.getMember().getId(),
                 c.getContent(), c.getLikeCount(), c.getReportCount(), c.isPublic(),
                 c.getCreatedAt(), c.getModerationDueAt(),
-                false, email
+                false, email,
+                false  // ✅ 기본값: 아직 신고 안 함
         );
     }
 
-    // 오버로드 추가: viewerId로 liked 계산
+    // 오버로드: viewerId 기준 liked/alreadyReported 판단
     private CommentResponse toRes(Comment c, Long viewerId) {
         boolean liked = (viewerId != null)
                 && likeRepository.existsByCommentIdAndMemberId(c.getId(), viewerId);
 
+        boolean alreadyReported = (viewerId != null)
+                && reportRepository.existsByCommentIdAndMemberId(c.getId(), viewerId); // ✅ 추가
+
         String email = c.getMember().getEmail();
 
         return new CommentResponse(
-
                 c.getId(), c.getPost().getId(), c.getMember().getId(),
                 c.getContent(), c.getLikeCount(), c.getReportCount(), c.isPublic(),
                 c.getCreatedAt(), c.getModerationDueAt(),
                 liked,
-                email
-
+                email,
+                alreadyReported // ✅ 내려줌
         );
     }
 }

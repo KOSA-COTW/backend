@@ -2,10 +2,14 @@ package cotw.server.domain.board.entity;
 
 import cotw.server.common.BaseEntity;
 import cotw.server.domain.member.entity.Member;
+import cotw.server.domain.comment.entity.CommentLike;
+import cotw.server.domain.comment.entity.CommentReport;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import static jakarta.persistence.GenerationType.IDENTITY;
 
@@ -65,12 +69,25 @@ public class Comment extends BaseEntity {
     @Column(name = "moderation_due_at")
     private LocalDateTime moderationDueAt;
 
+    // 댓글 좋아요 목록
+    @Builder.Default
+    @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CommentLike> commentLikes = new ArrayList<>();
+
+    // 댓글 신고 목록
+    @Builder.Default
+    @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CommentReport> commentReports = new ArrayList<>();
+
     // 낙관적 락(동시 업데이트 감지)
     // - @Builder.Default + NOT NULL: 빌더로 생성 시 null 방지
     @Version
     @Column(nullable = false)
     @Builder.Default
     private Long version = 0L;
+
+    @Column(name = "admin_memo", length = 500)
+    private String adminMemo;
 
     // ===== 도메인 로직 =====
 
@@ -92,13 +109,17 @@ public class Comment extends BaseEntity {
     public void decreaseLikeCount() { if (this.likeCount > 0) this.likeCount--; }
 
 
-    public void applyReportTally(int total) {
-        this.reportCount = total;
-        if (this.reportCount >= 3 && this.isPublic) {
+    // Comment.java
+    public void applyReportTally(int totalReports) {
+        this.reportCount = totalReports; // ✅ DB 필드 갱신
+        if (totalReports >= 3) {
             this.isPublic = false;
             this.moderationDueAt = LocalDateTime.now().plusHours(48);
+        } else {
+            this.moderationDueAt = null;
         }
     }
+
 
     /** (과거 코드 호환용) 증가 방식 사용 시에도 동일 규칙 적용 */
     @Deprecated

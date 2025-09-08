@@ -1,13 +1,17 @@
 package cotw.server.domain.admin.controller;
 
-import cotw.server.domain.admin.dto.response.AdminDashboardSummaryResponse;
-import cotw.server.domain.admin.service.AdminReportService;
+import cotw.server.domain.admin.dto.response.AdminDashboardResponse;
+import cotw.server.domain.admin.service.AdminDashboardService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/admin/dashboard")
@@ -15,10 +19,13 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminDashboardController {
 
-    private final AdminReportService service; // 간단히 재사용
+    private final AdminDashboardService service;
 
-    @GetMapping("/summary")
-    public ResponseEntity<AdminDashboardSummaryResponse> summary() {
-        return ResponseEntity.ok(service.summary());
+    @GetMapping
+    public ResponseEntity<AdminDashboardResponse> dashboard(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end
+    ) {
+        return ResponseEntity.ok(service.getDashboard(start, end));
     }
 }

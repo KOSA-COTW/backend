@@ -13,6 +13,12 @@ spring:
     hibernate:
       ddl-auto: update
 
+  data:
+    redis:
+      host: redis
+      port: 6379
+      client-type: lettuce
+
   security:
     oauth2:
       client:

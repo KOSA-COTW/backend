@@ -8,6 +8,7 @@ import cotw.server.domain.payment.dto.response.PaymentCancelResponse;
 import cotw.server.domain.payment.dto.response.PaymentCreateResponse;
 import cotw.server.domain.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +18,9 @@ import org.springframework.web.bind.annotation.*;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    
+    @Value("${app.frontend-url}")
+    private String frontendBaseUrl;
 
     @PostMapping
     public ResponseEntity<PaymentCreateResponse> createPayment(@RequestBody PaymentCreateRequest request) {
@@ -40,11 +44,11 @@ public class PaymentController {
         try {
             paymentService.confirmPayment(confirmRequest);
             return ResponseEntity.status(302)
-                    .header("Location", "http://localhost:5173/payment/success?orderId=" + orderId)
+                    .header("Location", frontendBaseUrl + "/payment/success?orderId=" + orderId)
                     .build();
         } catch (Exception e) {
             return ResponseEntity.status(302)
-                    .header("Location", "http://localhost:5173/payment/fail?error=payment_failed")
+                    .header("Location", frontendBaseUrl + "/payment/fail?error=payment_failed")
                     .build();
         }
     }

@@ -1,6 +1,9 @@
 package cotw.server.domain.admin.service;
 
+import cotw.server.domain.admin.dto.request.AdminPostPageRequestDTO;
+import cotw.server.domain.admin.dto.response.AdminPostCountResponseDTO;
 import cotw.server.domain.admin.dto.response.AdminPostListResponseDto;
+import cotw.server.domain.admin.dto.response.AdminPostPageResponseDTO;
 import cotw.server.domain.board.entity.Post;
 import cotw.server.domain.board.entity.PostVisibility;
 import cotw.server.domain.board.repository.PostRepository;
@@ -8,6 +11,8 @@ import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,14 +64,36 @@ public class AdminPostService {
     }
 
     /**
-     * 전체 게시글 목록 조회
+     * 전체 게시글 목록 조회 (페이징, 필터링, 정렬)
      */
     @Transactional(readOnly = true)
-    public List<AdminPostListResponseDto> getAllPosts() {
-        List<Post> posts = postRepository.findAll();
-        return posts.stream()
+    public AdminPostPageResponseDTO getAllPosts(AdminPostPageRequestDTO request) {
+        request.validateAndSetDefaults();
+        
+        PageRequest pageRequest = PageRequest.of(request.getPage() - 1, request.getLimit());
+        
+        Page<Post> postPage = postRepository.findAllWithFilters(
+                request.getVisibility() != null ? request.getVisibility().toString() : "",
+                request.getCategory() != null ? request.getCategory().toString() : "",
+                request.getTitle() != null ? request.getTitle() : "",
+                request.getAuthorName() != null ? request.getAuthorName() : "",
+                request.getSortBy(),
+                request.getSortDirection(),
+                pageRequest
+        );
+        
+        List<AdminPostListResponseDto> postDtos = postPage.getContent().stream()
                 .map(AdminPostListResponseDto::new)
                 .toList();
+        
+        return new AdminPostPageResponseDTO(
+                postDtos,
+                postPage.getNumber() + 1,
+                postPage.getTotalPages(),
+                postPage.getTotalElements(),
+                postPage.hasNext(),
+                postPage.hasPrevious()
+        );
     }
 
     /**
@@ -86,6 +113,26 @@ public class AdminPostService {
         }
 
         postRepository.delete(post);
+    }
+
+    /**
+     * 게시글 개수 통계 조회
+     */
+    @Transactional(readOnly = true)
+    public AdminPostCountResponseDTO getPostCounts() {
+        long totalCount = postRepository.count();
+        long privateCount = postRepository.countByVisibilityStatus(PostVisibility.PRIVATE);
+        long pendingCount = postRepository.countByVisibilityStatus(PostVisibility.PENDING);
+        long approvedCount = postRepository.countByVisibilityStatus(PostVisibility.APPROVED);
+        long rejectedCount = postRepository.countByVisibilityStatus(PostVisibility.REJECTED);
+
+        return new AdminPostCountResponseDTO(
+                totalCount,
+                privateCount,
+                pendingCount,
+                approvedCount,
+                rejectedCount
+        );
     }
 
 }

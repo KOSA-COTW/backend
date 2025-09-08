@@ -11,7 +11,7 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/public")
+@RequestMapping("/api/public")
 public class PublicDonationController {
     private final DonationCounterService counters;
     private final DonationRebuildService rebuild;

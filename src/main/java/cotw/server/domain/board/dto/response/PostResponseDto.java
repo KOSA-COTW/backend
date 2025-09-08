@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 public class PostResponseDto {
@@ -37,10 +38,10 @@ public class PostResponseDto {
     private LocalDateTime updatedAt;
 
     // 금액 관련 (계산된 값들)
-    private int amount;           // 목표 금액
-    private int currentAmount;    // 현재 모금액
-    private int remaining;        // 남은 금액 (음수면 0)
-    private int overfunded;       // 초과 모금액 (<=0이면 0)
+    private long amount;           // 목표 금액
+    private long currentAmount;    // 현재 모금액
+    private long remaining;        // 남은 금액 (음수면 0)
+    private long overfunded;       // 초과 모금액 (<=0이면 0)
     private double percent;       // 게이지용 퍼센트 (0~100, 소수점 1자리)
     private double percentRaw;    // 실제 달성률 (100 초과 가능)
 
@@ -48,6 +49,7 @@ public class PostResponseDto {
     private String status;        // "ONGOING" | "COMPLETED"
     private int daysLeft;         // 남은 일수 (음수면 0)
     private int donorCount;       // 기부자 수
+    private List<DonorResponseDto> donors;  // 기부자 목록
 
     public PostResponseDto(Post post) {
         this(post, LocalDate.now());
@@ -84,7 +86,7 @@ public class PostResponseDto {
         this.currentAmount = post.getCurrentAmount();
 
         // 남은 금액 (음수 방지)
-        int rawRemaining = amount - currentAmount;
+        long  rawRemaining = amount - currentAmount;
         this.remaining = Math.max(rawRemaining, 0);
 
         // 달성률 계산
@@ -105,5 +107,9 @@ public class PostResponseDto {
         } else {
             this.daysLeft = 0;
         }
+
+        this.donors = post.getParticipants().stream()
+                .map(DonorResponseDto::new)
+                .collect(Collectors.toList());
     }
 }

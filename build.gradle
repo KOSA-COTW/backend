@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'cotw'
-version = '0.0.1-SNAPSHOT'
+version = '1.0'
 
 java {
     toolchain {
@@ -30,7 +30,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.projectlombok:lombok'
-//    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
     runtimeOnly 'org.postgresql:postgresql'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -53,10 +53,6 @@ dependencies {
     // env 관련
     implementation "me.paulschwarz:spring-dotenv:4.0.0"
 
-    // spring mail
-    implementation 'org.springframework.boot:spring-boot-starter-mail'
-    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf' // 템플릿 메일 쓰면
-
     // resilience4j
     implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
     implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.2.0'
@@ -66,7 +62,6 @@ dependencies {
 
     // S3
     implementation 'com.amazonaws:aws-java-sdk-s3:1.12.772'
-
 }
 
 tasks.named('test') {
