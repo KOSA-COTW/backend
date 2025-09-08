@@ -53,8 +53,19 @@ public class PostService {
         Member author = memberRepository.findByEmail(authorEmail)
                 .orElseThrow(() -> new BoardException("존재하지 않는 회원입니다."));
 
-        if (!dto.getDeadline().isAfter(LocalDate.now())) {
+        LocalDate today = LocalDate.now();
+
+        // 마감일 검증
+        if (dto.getDeadline().isBefore(today)) {
             throw new BoardException("기부 마감일은 오늘 이후여야 합니다.");
+        }
+        if (dto.getDeadline().isAfter(today.plusYears(1))) {
+            throw new BoardException("기부 마감일은 1년 이내여야 합니다.");
+        }
+
+        // 금액 검증
+        if (dto.getAmount() % 100 != 0) {
+            throw new BoardException("목표 금액은 100원 단위로 입력해야 합니다.");
         }
 
         Post post = dto.toPostEntity(author);
@@ -154,6 +165,16 @@ public class PostService {
             throw new BoardException("수정 권한이 없습니다.");
         }
 
+        if (dto.getDeadline().isBefore(LocalDate.now())) {
+            throw new BoardException("기부 마감일은 오늘 이후여야 합니다.");
+        }
+        if (dto.getDeadline().isAfter(LocalDate.now().plusYears(1))) {
+            throw new BoardException("기부 마감일은 1년 이내여야 합니다.");
+        }
+        if (dto.getAmount() % 100 != 0) {
+            throw new BoardException("목표 금액은 100원 단위로 입력해야 합니다.");
+        }
+
         post.update(dto); // 내부에서 APPROVED → PENDING 전환됨
 
         post.clearImages();
@@ -220,7 +241,7 @@ public class PostService {
     @Transactional
     public void requestApproval(Long postId, Member user) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("게시글 없음"));
+                .orElseThrow(() -> new BoardException("존재하지 않는 게시글입니다."));
         if (!post.getAuthor().getId().equals(user.getId())) {
             throw new BoardException("본인 글만 승인 요청 가능");
         }
@@ -236,7 +257,7 @@ public class PostService {
     @Transactional
     public void cancelApproval(Long postId, Member user) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("게시글 없음"));
+                .orElseThrow(() -> new BoardException("존재하지 않는 게시글입니다."));
         if (!post.getAuthor().getId().equals(user.getId())) {
             throw new BoardException("본인 글만 승인 요청 가능");
         }
@@ -253,6 +274,25 @@ public class PostService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public Page<PostListResponseDto> getApprovedPostsPaged(
+            String category,
+            String title,
+            String authorName,
+            String sortBy,
+            String sortDirection,
+            String fundStatus,
+            int page,
+            int size
+    ) {
+        Page<Post> posts = postRepository.findAllApprovedWithFilters(
+                category, title, authorName,
+                sortBy, sortDirection,
+                fundStatus,
+                PageRequest.of(page, size)
+        );
+        return posts.map(PostListResponseDto::new);
+    }
 
 
 }
