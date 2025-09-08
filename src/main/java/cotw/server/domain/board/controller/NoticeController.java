@@ -3,6 +3,7 @@ package cotw.server.domain.board.controller;
 import cotw.server.domain.board.dto.request.NoticeRequestDto;
 import cotw.server.domain.board.dto.response.NoticeResponseDto;
 import cotw.server.domain.board.service.NoticeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +24,7 @@ public class NoticeController {
      * 공지사항 생성
      */
     @PostMapping
-    public ResponseEntity<NoticeResponseDto> create(@RequestBody NoticeRequestDto dto) {
+    public ResponseEntity<NoticeResponseDto> create(@Valid @RequestBody NoticeRequestDto dto) {
         return ResponseEntity.ok(noticeService.createNotice(dto));
     }
 
@@ -48,7 +49,7 @@ public class NoticeController {
      */
     @PatchMapping("/{id}")
     public ResponseEntity<NoticeResponseDto> update(@PathVariable Long id,
-                                                    @RequestBody NoticeRequestDto dto) {
+                                                    @Valid @RequestBody NoticeRequestDto dto) {
         return ResponseEntity.ok(noticeService.updateNotice(id, dto));
     }
 

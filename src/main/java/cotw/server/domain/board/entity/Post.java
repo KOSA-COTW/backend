@@ -42,11 +42,11 @@ public class Post extends BaseEntity {
 
     // 총 목표 금액
     @Column(nullable = false)
-    private int amount;
+    private long amount;
 
     // 현재까지 모금된 금액
     @Column(nullable = false)
-    private int currentAmount;
+    private long  currentAmount;
 
     // 게시글 공개 상태
     @Enumerated(EnumType.STRING)
