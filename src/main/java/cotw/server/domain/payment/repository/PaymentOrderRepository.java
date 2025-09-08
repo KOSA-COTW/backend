@@ -17,6 +17,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -68,4 +69,21 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
         return findTopDonors(PageRequest.of(0, limit));
     }
 
+    interface TotalDonationRow {
+        LocalDateTime getTransactionDate();
+        Long getNetAmount();
+    }
+
+    // 전체 기부금 총액을 날짜별로 집계 (POSTGRESQL)
+    @Query(value = """
+        SELECT
+            DATE(COALESCE(po.created_at)) AS transactionDate,
+            COALESCE(SUM(CASE WHEN po.status = 'DONE' THEN po.amount ELSE 0 END), 0)
+           AS netAmount
+        FROM payment_orders po
+        GROUP BY DATE(COALESCE(po.created_at))
+        ORDER BY transactionDate
+        """, nativeQuery = true)
+    List<TotalDonationRow> aggregateTotalDonationByDay(
+    );
 }

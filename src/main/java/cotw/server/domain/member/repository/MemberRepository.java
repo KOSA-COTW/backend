@@ -1,5 +1,6 @@
 package cotw.server.domain.member.repository;
 
+import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.ProviderType;
 import org.springframework.data.domain.Pageable;
@@ -36,4 +37,18 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     @Query("select m.id as id, m.email as email from Member m where m.id in :ids")
     List<MemberEmailProjection> findEmailsByIdIn(@Param("ids") List<Long> ids);
+
+    Optional<Member> findByVerifiedEmail(String verifiedEmail);
+
+    boolean existsByEmail(String email);
+
+    boolean existsByEmailIgnoreCase(String login);
+
+    boolean existsByVerifiedEmailIgnoreCase(String verify);
+
+    Optional<Member> findByEmailOrVerifiedEmail(String email, String verifiedEmail);
+
+    boolean existsByNicknameIgnoreCase(String nickname);
+
+    boolean existsByEmailIgnoreCaseAndStatus(String email, AccountStatus status);
 }

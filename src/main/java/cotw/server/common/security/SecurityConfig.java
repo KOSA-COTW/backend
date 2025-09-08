@@ -1,13 +1,12 @@
 package cotw.server.common.security;
 
-import cotw.server.common.auth.CustomOAuth2UserService;
-import cotw.server.common.auth.OAuth2LoginSuccessHandler;
+import cotw.server.common.OAuth2.CustomOAuth2UserService;
+import cotw.server.common.OAuth2.OAuth2LoginSuccessHandler;
 import cotw.server.common.jwt.*;
 import cotw.server.common.jwt.service.RefreshTokenService;
 import jakarta.servlet.http.HttpServletResponse;
 
 import cotw.server.domain.member.repository.MemberRepository;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -95,12 +94,12 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/oauth2/**", "/login/oauth2/code/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/", "/auth/login", "/auth/signup", "/reissue").permitAll()
+                .requestMatchers("/", "/auth/**", "/reissue").permitAll()
                 .requestMatchers("/api/payments/success", "/api/payments/confirm").permitAll()
-                .requestMatchers(HttpMethod.GET, "/info", "/public/donation-total").permitAll()
+                .requestMatchers(HttpMethod.GET, "/info", "/public/donation-total", "/members/dup-check/**").permitAll()
                 // 소프트 삭제 관련 요청
-                .requestMatchers(HttpMethod.POST, "/deactivate", "/recover").permitAll()
-
+                .requestMatchers(HttpMethod.POST, "/deactivate", "/account/recover").permitAll()
+                // 내 정보 변경 관련 요청
                 .requestMatchers(HttpMethod.PATCH, "/editpass", "/changeimage", "/editnickname").permitAll()
 
                 // 공개 조회

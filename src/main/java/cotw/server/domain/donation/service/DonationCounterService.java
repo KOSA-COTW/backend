@@ -1,6 +1,7 @@
 package cotw.server.domain.donation.service;
 
 import cotw.server.domain.payment.repository.PaymentLedgerRepository;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
@@ -16,7 +17,7 @@ import java.util.List;
 public class DonationCounterService {
     private final StringRedisTemplate redis;
     private final RedisScript<Long> multiIncrScript;
-    private final PaymentLedgerRepository repo;   // ✅ 주입
+    private final PaymentLedgerRepository repo;   // 주입
 
     private static String totalKey() { return "donation:total"; }
     private static String postKey(Long postId) { return "donation:post:" + postId + ":total"; }
@@ -41,7 +42,7 @@ public class DonationCounterService {
         }
     }
 
-    /** ✅ 이벤트 직전: 영향 키(전체/포스트/일자)를 DB 기준으로 on-demand 채움 */
+    /** 이벤트 직전: 영향 키(전체/포스트/일자)를 DB 기준으로 on-demand 채움 */
     private void ensureInitialized(Long postId, LocalDate paidDate) {
         // 전체 합
         String tk = totalKey();
@@ -67,15 +68,15 @@ public class DonationCounterService {
 
     /** 확정 결제 반영(증가) */
     public void applyPaid(Long postId, long amountWon, LocalDate paidDate) {
-        ensureInitialized(postId, paidDate); // ✅ 먼저 부분 리빌드
-        var keys = List.of(totalKey(), postKey(postId), dailyKey(paidDate));
+        ensureInitialized(postId, paidDate); // 먼저 부분 리빌드
+        List<@NotNull String> keys = List.of(totalKey(), postKey(postId), dailyKey(paidDate));
         redis.execute(multiIncrScript, keys, String.valueOf(amountWon));
     }
 
     /** 취소/환불 반영(감소) */
     public void applyReversal(Long postId, long amountWon, LocalDate paidDate) {
-        ensureInitialized(postId, paidDate); // ✅ 먼저 부분 리빌드
-        var keys = List.of(totalKey(), postKey(postId), dailyKey(paidDate));
+        ensureInitialized(postId, paidDate); // 먼저 부분 리빌드
+        List<@NotNull String>  keys = List.of(totalKey(), postKey(postId), dailyKey(paidDate));
         redis.execute(multiIncrScript, keys, String.valueOf(-amountWon));
     }
 
@@ -84,6 +85,6 @@ public class DonationCounterService {
         return v == null ? 0L : Long.parseLong(v);
     }
 
-    /** (선택) 전체 키 없으면 한 번만 전체 리빌드 트리거할지 여부 판단용 */
+    /** 전체 키 없으면 한 번만 전체 리빌드 트리거할지 여부 판단용 */
     public boolean hasTotalKey() { return hasKey(totalKey()); }
 }

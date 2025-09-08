@@ -30,7 +30,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.projectlombok:lombok'
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+//    developmentOnly 'org.springframework.boot:spring-boot-devtools'
     runtimeOnly 'org.postgresql:postgresql'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -53,9 +53,9 @@ dependencies {
     // env 관련
     implementation "me.paulschwarz:spring-dotenv:4.0.0"
 
-    // 통합 테스트에 유용(선택)
-    testImplementation 'org.testcontainers:junit-jupiter'
-    testImplementation 'org.testcontainers:redis'
+    // spring mail
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf' // 템플릿 메일 쓰면
 
     // resilience4j
     implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
@@ -64,7 +64,9 @@ dependencies {
     implementation 'io.github.resilience4j:resilience4j-bulkhead:2.2.0'
     implementation 'io.github.resilience4j:resilience4j-timelimiter:2.2.0'
 
+    // S3
     implementation 'com.amazonaws:aws-java-sdk-s3:1.12.772'
+
 }
 
 tasks.named('test') {
