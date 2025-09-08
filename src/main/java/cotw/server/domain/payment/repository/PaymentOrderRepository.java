@@ -13,6 +13,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import cotw.server.domain.admin.dto.response.AdminTopDonorResponse;
+import cotw.server.domain.payment.entity.PaymentOrder;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import cotw.server.domain.payment.entity.PaymentStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import org.springframework.stereotype.Repository;
 
@@ -65,6 +72,7 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     """)
     List<AdminTopDonorResponse> findTopDonors(Pageable pageable);
 
+    /** 편의 메서드: 상위 N명 */
     default List<AdminTopDonorResponse> findTopDonors(int limit) {
         return findTopDonors(PageRequest.of(0, limit));
     }
@@ -95,7 +103,7 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     """)
     List<AdminTopDonorProjection> findTopDonorProjections(Pageable pageable);
 
-    // ✅ concat 제거, lower(...) like :search 로 변경
+    //  concat 제거, lower(...) like :search 로 변경
     @Query(value = """
         select new cotw.server.domain.admin.dto.response.AdminDonationListItemResponse(
             po.id,
@@ -171,4 +179,21 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
 
     List<PaymentOrder> findTop5ByStatusOrderByCreatedAtDesc(PaymentStatus status);
 
+    interface TotalDonationRow {
+        LocalDateTime getTransactionDate();
+        Long getNetAmount();
+    }
+
+    // 전체 기부금 총액을 날짜별로 집계 (POSTGRESQL)
+    @Query(value = """
+        SELECT
+            DATE(COALESCE(po.created_at)) AS transactionDate,
+            COALESCE(SUM(CASE WHEN po.status = 'DONE' THEN po.amount ELSE 0 END), 0)
+           AS netAmount
+        FROM payment_orders po
+        GROUP BY DATE(COALESCE(po.created_at))
+        ORDER BY transactionDate
+        """, nativeQuery = true)
+    List<TotalDonationRow> aggregateTotalDonationByDay(
+    );
 }

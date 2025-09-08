@@ -60,6 +60,7 @@ dependencies {
     implementation 'io.github.resilience4j:resilience4j-bulkhead:2.2.0'
     implementation 'io.github.resilience4j:resilience4j-timelimiter:2.2.0'
 
+    // S3
     implementation 'com.amazonaws:aws-java-sdk-s3:1.12.772'
 }
 

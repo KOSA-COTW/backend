@@ -18,14 +18,8 @@ public class PublicDonationController {
 
     @GetMapping("/donation-total")
     public Map<String, Long> total() {
-//        long v = counters.getTotal();
-//        if (v == 0L) { // 초기 Redis 비었을 때 복구
-//            rebuild.rebuildAll();
-//            v = counters.getTotal();
-//        }
         if(!counters.hasTotalKey()){
             rebuild.rebuildAll();
-//            v = counters.getTotal();
         }
         return Map.of("totalWon", counters.getTotal());
     }

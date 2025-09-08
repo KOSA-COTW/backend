@@ -1,4 +1,4 @@
-package cotw.server.common.auth;
+package cotw.server.common.OAuth2;
 
 import java.util.Map;
 

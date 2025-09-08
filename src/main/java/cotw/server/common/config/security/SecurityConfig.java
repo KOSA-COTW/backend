@@ -1,11 +1,10 @@
 package cotw.server.common.config.security;
 
-import cotw.server.common.auth.CustomOAuth2UserService;
-import cotw.server.common.auth.OAuth2LoginSuccessHandler;
+import cotw.server.common.OAuth2.CustomOAuth2UserService;
+import cotw.server.common.OAuth2.OAuth2LoginSuccessHandler;
 import cotw.server.common.jwt.*;
 import cotw.server.common.jwt.service.RefreshTokenService;
 import cotw.server.domain.member.repository.MemberRepository;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -111,7 +110,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
 
-                // ✅ 댓글 관련 공개 허용
+                // 댓글 관련 공개 허용
                 .requestMatchers(HttpMethod.GET, "/api/comments").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/comments/reports/reasons").permitAll()
@@ -132,7 +131,6 @@ public class SecurityConfig {
 
                 .anyRequest().authenticated()
         );
-
 
         // OAuth2 로그인
         http.oauth2Login(oauth -> oauth

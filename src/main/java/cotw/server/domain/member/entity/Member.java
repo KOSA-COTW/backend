@@ -74,6 +74,11 @@ public class Member extends BaseEntity {
     @Column(nullable = false)
     private long tokenVersion = 0L;        // 토큰 버전(즉시 무효화용)
 
+    @Column(unique = true)
+    private String verifiedEmail;
+
+    private LocalDateTime emailVerifiedAt; // 이메일 검증 시각
+
 
     @Builder.Default        // NPE 방지를 위해 적용
     @OneToMany(mappedBy = "author")               // fetch = LAZY (기본)
