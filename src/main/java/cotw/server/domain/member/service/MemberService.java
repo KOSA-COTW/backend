@@ -11,7 +11,6 @@ import cotw.server.domain.member.dto.response.DupCheckResponse;
 import cotw.server.domain.member.dto.response.ShowInfoResponse;
 import cotw.server.domain.member.dto.request.SignUpRequest;
 import cotw.server.domain.member.dto.response.ShowInfoResponse;
-import cotw.server.domain.member.dto.response.SignUpResponse;
 import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;

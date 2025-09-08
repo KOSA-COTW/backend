@@ -5,6 +5,7 @@ import cotw.server.common.OAuth2.OAuth2LoginSuccessHandler;
 import cotw.server.common.jwt.*;
 import cotw.server.common.jwt.service.RefreshTokenService;
 import cotw.server.domain.member.repository.MemberRepository;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

@@ -24,14 +24,6 @@ public class MemberController {
 
     private final MemberService memberService;
 
-    // 일반 회원가입. 소셜 회원가입은 로그인 시도 시 자동으로 진행
-//    @PostMapping("/auth/signup")
-//    public ResponseEntity<SignUpResponseDTO> signUp(@Valid @RequestBody SignUpRequestDTO signUpRequestDTO) {
-//        SignUpResponseDTO response = memberService.signUpMember(signUpRequestDTO);
-//        ResponseEntity<SignUpResponseDTO> responseEntity = new ResponseEntity<>(response, HttpStatus.CREATED);
-//
-//        return responseEntity;
-//    }
 
     @GetMapping("/members/dup-check/email")
     public ResponseEntity<DupCheckResponse> checkEmail(@RequestParam("email") String email) {
