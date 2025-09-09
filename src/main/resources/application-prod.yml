@@ -29,6 +29,9 @@ spring:
       port: 6379
       client-type: lettuce
 
+  cache:
+    type: redis
+
   security:
     oauth2:
       client:
@@ -76,6 +79,30 @@ spring:
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        transport.protocol: smtp
+        debug: true
+        smtp:
+          auth: true
+          starttls.enable: true
+          connection timeout: 5000
+          timeout: 5000              # 5s read timeout
+          write timeout: 5000         # 5s write timeout
+          quit wait: false            # 서버 응답 기다리지 않고 종료
+          pool: true                 # 연결 풀링
+          pool.size: 5
+
+  thymeleaf:
+    prefix: classpath:/templates/mail/
+    suffix: .html
+
 logging:
   level:
     org:
@@ -90,6 +117,8 @@ jwt:
 app:
   front-redirect-base: ${FRONTEND_URL}
   frontend-url: ${FRONTEND_URL}
+  mail:
+    from: "cotw.deliver@gmail.com"
 
 toss:
   secretKey: ${TOSS_SECRET_KEY}
