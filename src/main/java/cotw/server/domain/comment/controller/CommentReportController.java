@@ -28,8 +28,9 @@ public class CommentReportController {
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/{commentId}/reports")
     public ResponseEntity<ReportResponse> report(@PathVariable Long commentId,
-                                                 @AuthenticationPrincipal(expression = "id") Long memberId, // SecurityContext에서 memberId 추출
+                                                 @AuthenticationPrincipal(expression = "id") Long memberId,
                                                  @Valid @RequestBody ReportRequest req) {
-        return ResponseEntity.ok(reportService.report(memberId, commentId, req));
+        ReportResponse res = reportService.report(memberId, commentId, req);
+        return ResponseEntity.ok(res);
     }
 }

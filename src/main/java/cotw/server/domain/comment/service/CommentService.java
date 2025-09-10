@@ -9,11 +9,10 @@ import cotw.server.domain.comment.repository.CommentReportRepository; // ✅ 추
 import cotw.server.domain.comment.repository.CommentRepository;
 import cotw.server.domain.member.entity.Member;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityNotFoundException;
+import cotw.server.domain.comment.exception.CommentException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import cotw.server.domain.board.entity.Comment;
@@ -44,7 +43,7 @@ public class CommentService {
     public CommentResponse update(Long commentId, Long requesterId, UpdateCommentRequest req) {
         Comment c = get(commentId);
         requireOwner(c, requesterId);
-        if (c.getDeletedAt() != null) throw new IllegalStateException("삭제된 댓글입니다.");
+        if (c.getDeletedAt() != null) throw new CommentException("삭제된 댓글입니다.", "COMMENT_DELETED");
         c.setContent(req.content());
         return toRes(c);
     }
@@ -79,11 +78,11 @@ public class CommentService {
     // 내부 유틸
     private Comment get(Long id) {
         return commentRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("comment not found: " + id));
+                .orElseThrow(() -> new CommentException("comment not found: " + id, "COMMENT_NOT_FOUND"));
     }
     private void requireOwner(Comment c, Long requesterId) {
         if (!Objects.equals(c.getMember().getId(), requesterId))
-            throw new AccessDeniedException("권한이 없습니다.");
+            throw new CommentException("권한이 없습니다.", "COMMENT_ACCESS_DENIED");
     }
 
     // 작성/수정 직후 → liked=false, alreadyReported=false
