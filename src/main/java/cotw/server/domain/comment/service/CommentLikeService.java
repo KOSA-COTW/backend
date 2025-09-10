@@ -1,4 +1,3 @@
-// src/main/java/cotw/server/domain/comment/service/CommentLikeService.java
 package cotw.server.domain.comment.service;
 
 import cotw.server.domain.board.entity.Comment;
@@ -9,7 +8,7 @@ import cotw.server.domain.comment.repository.CommentLikeRepository;
 import cotw.server.domain.comment.repository.CommentRepository;
 import cotw.server.domain.member.entity.Member;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityNotFoundException;
+import cotw.server.domain.comment.exception.CommentException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -27,7 +26,7 @@ public class CommentLikeService {
     public LikeResponse like(Long commentId, LikeRequest req) {
         // 관리 상태 보장 (없으면 404)
         Comment c = commentRepository.findById(commentId)
-                .orElseThrow(() -> new EntityNotFoundException("comment not found: " + commentId));
+                .orElseThrow(() -> new CommentException("comment not found: " + commentId, "COMMENT_NOT_FOUND"));
 
         try {
             // UNIQUE(comment_id, member_id) 제약으로 중복 좋아요 시 예외 발생
@@ -56,7 +55,7 @@ public class CommentLikeService {
     public LikeResponse unlike(Long commentId, Long memberId) {
         // 관리 상태 보장 (없으면 404)
         Comment c = commentRepository.findById(commentId)
-                .orElseThrow(() -> new EntityNotFoundException("comment not found: " + commentId));
+                .orElseThrow(() -> new CommentException("comment not found: " + commentId, "COMMENT_NOT_FOUND"));
 
         long deleted = likeRepository.deleteByCommentIdAndMemberId(commentId, memberId);
         if (deleted > 0) {

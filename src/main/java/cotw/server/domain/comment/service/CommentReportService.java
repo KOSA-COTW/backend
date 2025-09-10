@@ -1,4 +1,3 @@
-// src/main/java/cotw/server/domain/comment/service/CommentReportService.java
 package cotw.server.domain.comment.service;
 
 import cotw.server.domain.board.entity.Comment;
@@ -9,8 +8,8 @@ import cotw.server.domain.comment.entity.ReportReason;
 import cotw.server.domain.comment.repository.CommentReportRepository;
 import cotw.server.domain.comment.repository.CommentRepository;
 import cotw.server.domain.member.entity.Member;
+import cotw.server.domain.comment.exception.CommentException;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -36,26 +35,26 @@ public class CommentReportService {
         LocalDateTime start = today.atStartOfDay();
         LocalDateTime end = today.plusDays(1).atStartOfDay();
         if (reportRepository.countDailyByMember(reporterId, start, end) >= DAILY_LIMIT) {
-            throw new IllegalStateException("하루 신고 한도(3회)를 초과했습니다.");
+            throw new CommentException("하루 신고 한도(3회)를 초과했습니다.", "REPORT_DAILY_LIMIT");
         }
 
         // 2) 기타 사유면 상세 필수
         if (req.reason() == ReportReason.ETC &&
                 (req.detail() == null || req.detail().isBlank())) {
-            throw new IllegalStateException("기타 사유를 선택한 경우 상세 내용을 입력해주세요.");
+            throw new CommentException("기타 사유를 선택한 경우 상세 내용을 입력해주세요.", "REPORT_DETAIL_REQUIRED");
         }
 
         // 3) 대상 댓글 검증
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new EntityNotFoundException("댓글을 찾을 수 없습니다: " + commentId));
+                .orElseThrow(() -> new CommentException("댓글을 찾을 수 없습니다: " + commentId, "COMMENT_NOT_FOUND"));
         if (comment.isDeleted()) {
-            throw new IllegalStateException("삭제된 댓글은 신고할 수 없습니다.");
+            throw new CommentException("삭제된 댓글은 신고할 수 없습니다.", "COMMENT_DELETED");
         }
         if (!comment.isPublic()) {
-            throw new IllegalStateException("이미 숨겨진 댓글은 신고할 수 없습니다.");
+            throw new CommentException("이미 숨겨진 댓글은 신고할 수 없습니다.", "COMMENT_HIDDEN");
         }
         if (comment.getMember().getId().equals(reporterId)) {
-            throw new IllegalStateException("본인 댓글은 신고할 수 없습니다.");
+            throw new CommentException("본인 댓글은 신고할 수 없습니다.", "CANNOT_REPORT_OWN_COMMENT");
         }
 
         // 4) 신고 저장 (UNIQUE 제약으로 중복 방지)
@@ -68,7 +67,7 @@ public class CommentReportService {
                     .detail(detail)
                     .build());
         } catch (DataIntegrityViolationException e) {
-            throw new IllegalStateException("이미 신고한 댓글입니다.");
+            throw new CommentException("이미 신고한 댓글입니다.", "ALREADY_REPORTED");
         }
 
         // 5) 총 신고 수 재계산 및 규칙 반영
