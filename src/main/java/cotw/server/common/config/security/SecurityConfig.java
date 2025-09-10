@@ -99,11 +99,11 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/oauth2/**", "/login/oauth2/code/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/", "/api/auth/login", "/api/auth/signup", "/reissue").permitAll()
+                .requestMatchers("/", "/api/auth/**", "/reissue").permitAll()
                 .requestMatchers("/api/payments/success", "/api/payments/confirm").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/info", "/api/public/donation-total").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/info", "/api/public/donation-total", "api/members/dup-check/**").permitAll()
                 // 소프트 삭제 관련 요청
-                .requestMatchers(HttpMethod.POST, "/api/deactivate", "/api/recover").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/deactivate", "/api/account/recover").permitAll()
 
                 .requestMatchers(HttpMethod.PATCH, "/api/editpass", "/api/changeimage", "/api/editnickname").permitAll()
 

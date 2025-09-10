@@ -144,10 +144,6 @@ public class MemberService {
         // 2-1) 결제 주문도 FK 치환
         paymentOrderRepository.reassignMemberToDeleted(ids, deletedUser);
 
-        // (선택) Participant 등 다른 FK도 정책에 따라 삭제/치환
-        // participantRepository.deleteByMemberIdIn(ids);
-        // 또는 participantRepository.reassignMemberToDeleted(ids, deletedUser);
-
         // 3) refresh 전부 제거
         List<MemberEmailProjection> emails = memberRepository.findEmailsByIdIn(ids);
         for (MemberEmailProjection p : emails) {
