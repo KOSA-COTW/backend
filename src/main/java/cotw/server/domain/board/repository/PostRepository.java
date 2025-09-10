@@ -37,6 +37,26 @@ public interface PostRepository extends JpaRepository<Post, Long> {
            """)
     List<Post> findHomePosts(@Param("today") LocalDate today, Pageable pageable);
 
+    // 카테고리 + 상태별 조회 (단순 메서드)
+    Page<Post> findByCategoryAndVisibilityStatus(Category category, PostVisibility visibilityStatus, Pageable pageable);
+
+
+    // 관리자용: 공개 게시글 조회 (카테고리 필터, 정렬, 페이징)
+    @Query("""
+           SELECT p
+           FROM Post p
+           WHERE p.visibilityStatus = 'APPROVED'
+             AND (:category IS NULL OR p.category = :category)
+           ORDER BY 
+             CASE WHEN :sortDirection = 'ASC' THEN p.createdAt END ASC,
+             CASE WHEN :sortDirection = 'DESC' THEN p.createdAt END DESC
+           """)
+    Page<Post> findAdminOnlyPublicPosts(
+        @Param("category") Category category, 
+        @Param("sortDirection") String sortDirection,
+        Pageable pageable
+    );
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         update Post p
@@ -99,6 +119,50 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             @Param("title") String title,
             @Param("sortBy") String sortBy,
             @Param("sortDirection") String sortDirection,
+            Pageable pageable
+    );
+
+    @Query(value = """
+    SELECT p.* 
+    FROM post p
+    LEFT JOIN member a ON a.member_id = p.member_id
+    WHERE p.visibility_status = 'APPROVED'
+      AND (COALESCE(:category, '') = '' OR p.category = :category)
+      AND (COALESCE(:title, '') = '' OR LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%')))
+      AND (COALESCE(:authorName, '') = '' OR LOWER(a.name) LIKE LOWER(CONCAT('%', :authorName, '%')))
+      AND (
+        :fundStatus = '' 
+        OR (:fundStatus = 'ONGOING'  AND p.deadline >= CURRENT_DATE)
+        OR (:fundStatus = 'COMPLETED' AND p.deadline < CURRENT_DATE)
+      )
+    ORDER BY 
+      CASE WHEN :sortBy = 'date' AND :sortDirection = 'desc' THEN p.created_at END DESC,
+      CASE WHEN :sortBy = 'date' AND :sortDirection = 'asc'  THEN p.created_at END ASC,
+      CASE WHEN :sortBy = 'title' AND :sortDirection = 'desc' THEN p.title END DESC,
+      CASE WHEN :sortBy = 'title' AND :sortDirection = 'asc'  THEN p.title END ASC
+    """,
+            countQuery = """
+    SELECT COUNT(*) 
+    FROM post p
+    LEFT JOIN member a ON a.member_id = p.member_id
+    WHERE p.visibility_status = 'APPROVED'
+      AND (COALESCE(:category, '') = '' OR p.category = :category)
+      AND (COALESCE(:title, '') = '' OR LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%')))
+      AND (COALESCE(:authorName, '') = '' OR LOWER(a.name) LIKE LOWER(CONCAT('%', :authorName, '%')))
+      AND (
+        :fundStatus = '' 
+        OR (:fundStatus = 'ONGOING'  AND p.deadline >= CURRENT_DATE)
+        OR (:fundStatus = 'COMPLETED' AND p.deadline < CURRENT_DATE)
+      )
+    """,
+            nativeQuery = true)
+    Page<Post> findAllApprovedWithFilters(
+            @Param("category") String category,
+            @Param("title") String title,
+            @Param("authorName") String authorName,
+            @Param("sortBy") String sortBy,
+            @Param("sortDirection") String sortDirection,
+            @Param("fundStatus") String fundStatus,
             Pageable pageable
     );
 

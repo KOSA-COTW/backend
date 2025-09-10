@@ -9,9 +9,11 @@ import cotw.server.domain.board.dto.response.PostListResponseDto;
 import cotw.server.domain.board.dto.response.PostResponseDto;
 import cotw.server.domain.board.entity.Category;
 import cotw.server.domain.board.entity.PostVisibility;
+import cotw.server.domain.board.exception.BoardException;
 import cotw.server.domain.board.service.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -54,7 +56,7 @@ public class PostController {
             @RequestParam(required = false) String title,
             @RequestParam(defaultValue = "date") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection) {
-        
+
         MyPostPageRequestDTO request = new MyPostPageRequestDTO();
         request.setPage(page);
         request.setLimit(limit);
@@ -63,7 +65,7 @@ public class PostController {
         request.setTitle(title);
         request.setSortBy(sortBy);
         request.setSortDirection(sortDirection);
-        
+
         return ResponseEntity.ok(postService.getMyPosts(principal.getUsername(), request));
     }
 
@@ -100,7 +102,7 @@ public class PostController {
     @PatchMapping("/{postId}")
     public ResponseEntity<Void> updatePost(@AuthenticationPrincipal CustomUserDetails principal,
                                            @PathVariable Long postId,
-                                           @RequestBody PostUpdateRequestDto dto) {
+                                           @Valid @RequestBody PostUpdateRequestDto dto) {
         postService.updatePost(postId, dto, principal.getUsername());
         return ResponseEntity.ok().build();
     }
@@ -126,9 +128,13 @@ public class PostController {
      * 이미지 업로드
      */
     @PostMapping("/upload")
-    public Map<String, String> uploadImage(@RequestPart("file") MultipartFile file) throws IOException {
-        String imageUrl = postService.upload(file);
-        return Map.of("url", imageUrl);
+    public Map<String, String> uploadImage(@RequestPart("file") MultipartFile file) {
+        try {
+            String imageUrl = postService.upload(file);
+            return Map.of("url", imageUrl);
+        } catch (IOException e) {
+            throw new BoardException("이미지 업로드 중 오류가 발생했습니다.");
+        }
     }
 
     // 승인 요청
@@ -138,7 +144,7 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails principal
     ) {
         postService.requestApproval(postId, principal.getMember());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     // 승인 요청 취소
@@ -148,7 +154,28 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails principal
     ) {
         postService.cancelApproval(postId, principal.getMember());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/paged")
+    public ResponseEntity<Page<PostListResponseDto>> getApprovedPostsPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String authorName,
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            @RequestParam(defaultValue = "") String fundStatus
+    ) {
+        return ResponseEntity.ok(
+                postService.getApprovedPostsPaged(
+                        category, title, authorName,
+                        sortBy, sortDirection,
+                        fundStatus,
+                        page, size
+                )
+        );
     }
 
 }

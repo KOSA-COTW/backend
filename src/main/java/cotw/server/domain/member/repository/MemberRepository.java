@@ -42,6 +42,20 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query("select m.id as id, m.email as email from Member m where m.id in :ids")
     List<MemberEmailProjection> findEmailsByIdIn(@Param("ids") List<Long> ids);
 
+    Optional<Member> findByVerifiedEmail(String verifiedEmail);
+
+    boolean existsByEmail(String email);
+
+    boolean existsByEmailIgnoreCase(String login);
+
+    boolean existsByVerifiedEmailIgnoreCase(String verify);
+
+    Optional<Member> findByEmailOrVerifiedEmail(String email, String verifiedEmail);
+
+    boolean existsByNicknameIgnoreCase(String nickname);
+
+    boolean existsByEmailIgnoreCaseAndStatus(String email, AccountStatus status);
+
     @Query(value = """
         select m from Member m
         where m.status <> cotw.server.domain.member.entity.AccountStatus.DELETED
@@ -66,7 +80,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
                                @Param("status") AccountStatus status,
                                Pageable pageable);
 
-    // ✅ 전체 회원 수 (탈퇴 회원 제외)
+    //  전체 회원 수 (탈퇴 회원 제외)
     @Query("select count(m) from Member m where m.status <> cotw.server.domain.member.entity.AccountStatus.DELETED")
     long countActiveMembers();
 }

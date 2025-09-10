@@ -1,7 +1,7 @@
 package cotw.server.common.config.security;
 
-import cotw.server.common.auth.CustomOAuth2UserService;
-import cotw.server.common.auth.OAuth2LoginSuccessHandler;
+import cotw.server.common.OAuth2.CustomOAuth2UserService;
+import cotw.server.common.OAuth2.OAuth2LoginSuccessHandler;
 import cotw.server.common.jwt.*;
 import cotw.server.common.jwt.service.RefreshTokenService;
 import cotw.server.domain.member.repository.MemberRepository;
@@ -99,11 +99,11 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/oauth2/**", "/login/oauth2/code/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/", "/api/auth/login", "/api/auth/signup", "/reissue").permitAll()
+                .requestMatchers("/", "/api/auth/**", "/reissue").permitAll()
                 .requestMatchers("/api/payments/success", "/api/payments/confirm").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/info", "/api/public/donation-total").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/info", "/api/public/donation-total", "api/members/dup-check/**").permitAll()
                 // 소프트 삭제 관련 요청
-                .requestMatchers(HttpMethod.POST, "/api/deactivate", "/api/recover").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/deactivate", "/api/account/recover").permitAll()
 
                 .requestMatchers(HttpMethod.PATCH, "/api/editpass", "/api/changeimage", "/api/editnickname").permitAll()
 
@@ -111,7 +111,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
 
-                // ✅ 댓글 관련 공개 허용
+                // 댓글 관련 공개 허용
                 .requestMatchers(HttpMethod.GET, "/api/comments").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/comments/reports/reasons").permitAll()
@@ -132,7 +132,6 @@ public class SecurityConfig {
 
                 .anyRequest().authenticated()
         );
-
 
         // OAuth2 로그인
         http.oauth2Login(oauth -> oauth

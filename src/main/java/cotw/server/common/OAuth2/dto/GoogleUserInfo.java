@@ -1,6 +1,6 @@
-package cotw.server.common.auth.dto;
+package cotw.server.common.OAuth2.dto;
 
-import cotw.server.common.auth.OAuth2UserInfo;
+import cotw.server.common.OAuth2.OAuth2UserInfo;
 
 import java.util.Map;
 

@@ -7,9 +7,10 @@ import cotw.server.domain.board.service.PostService;
 import cotw.server.domain.comment.repository.CommentLikeRepository;
 import cotw.server.domain.comment.repository.CommentReportRepository;
 import cotw.server.domain.comment.repository.CommentRepository;
-import cotw.server.domain.member.dto.request.SignUpRequestDTO;
-import cotw.server.domain.member.dto.response.ShowInfoResponseDTO;
-import cotw.server.domain.member.dto.response.SignUpResponseDTO;
+import cotw.server.domain.member.dto.response.DupCheckResponse;
+import cotw.server.domain.member.dto.response.ShowInfoResponse;
+import cotw.server.domain.member.dto.request.SignUpRequest;
+import cotw.server.domain.member.dto.response.ShowInfoResponse;
 import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.Role;
@@ -33,6 +34,9 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 @Transactional
@@ -52,23 +56,13 @@ public class MemberService {
     private final PaymentOrderRepository paymentOrderRepository;
 
 
+    // 간단 이메일/닉네임 검증(프론트 검증과 별개로 백엔드에서도 가볍게 방어)
+    private static final Pattern EMAIL_RX = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    private static final Pattern NICK_RX  = Pattern.compile("^[A-Za-z0-9가-힣._-]{2,20}$");
 
-    public SignUpResponseDTO signUpMember(SignUpRequestDTO signUpRequestDTO) {
-        // 이메일 유무 확인
-        if (memberRepository.findByEmail(signUpRequestDTO.email()).isPresent())
-            throw new IllegalArgumentException("email already used");
+    // 예약/금지 닉네임(선택)
+    private static final Set<String> RESERVED_NICKS = Set.of("admin","administrator","owner","system","null","undefined","root");
 
-        String encodedPassword = passwordEncoder.encode(signUpRequestDTO.password());
-
-        int randomInt = (int) (Math.random() * 3) + 1;
-        String pictureUrl = "/profile/profile"+ randomInt +".png";
-
-        Member newMember = signUpRequestDTO.toEntity(signUpRequestDTO.name(), signUpRequestDTO.nickname(), signUpRequestDTO.email(), encodedPassword, pictureUrl, Role.USER);
-
-        memberRepository.save(newMember);
-
-        return SignUpResponseDTO.fromEntity(newMember);
-    }
 
     public boolean validatePassword(Long memberId, String password) {
         Member m = memberRepository.findById(memberId)
@@ -79,11 +73,10 @@ public class MemberService {
     }
 
 
-    public ShowInfoResponseDTO showMemberInfo(CustomUserDetails customUserDetails) {
+    public ShowInfoResponse showMemberInfo(CustomUserDetails customUserDetails) {
         Member member = memberRepository.findByEmail(customUserDetails.getUsername()).orElseThrow(
                 () -> new IllegalArgumentException("Invalid member")
         );
-
 
         List<PaymentLedger> payments = paymentLedgerRepository.findByMemberIdAndStatus(customUserDetails.getMemberId(), PaymentStatus.DONE);
 
@@ -91,7 +84,7 @@ public class MemberService {
         Long totalDonation = payments.stream().mapToLong(PaymentLedger::getAmount).sum();
 
 
-        ShowInfoResponseDTO responseDTO = ShowInfoResponseDTO.from(member, oneTimeCount, totalDonation);
+        ShowInfoResponse responseDTO = ShowInfoResponse.from(member, oneTimeCount, totalDonation);
         return responseDTO;
     }
 
@@ -113,7 +106,8 @@ public class MemberService {
 
     @Transactional
     public void recover(String email) {
-        Member m = memberRepository.findByEmail(email).orElseThrow(
+        Member m = memberRepository.findByEmail(email).orElse(null);
+        if(m == null) m = memberRepository.findByVerifiedEmail(email).orElseThrow(
                 () -> new IllegalArgumentException("user not found")
         );
         if (m.getStatus() != AccountStatus.DELETED) throw new IllegalStateException("not deleted");
@@ -129,6 +123,7 @@ public class MemberService {
         refreshTokenService.revokeAllByUser(m.getEmail());
     }
 
+    // 스케쥴러를 통해 작동되는 메서드. 소프트 삭제 상태이고 보관 만료된 계정들 삭제
     public int hardDeleteExpiredMembersChunk(int chunkSize) {
         List<Long> ids = memberRepository.findIdsToHardDelete(LocalDateTime.now(),
                 (Pageable) PageRequest.of(0, chunkSize));
@@ -148,10 +143,6 @@ public class MemberService {
 
         // 2-1) 결제 주문도 FK 치환
         paymentOrderRepository.reassignMemberToDeleted(ids, deletedUser);
-
-        // (선택) Participant 등 다른 FK도 정책에 따라 삭제/치환
-        // participantRepository.deleteByMemberIdIn(ids);
-        // 또는 participantRepository.reassignMemberToDeleted(ids, deletedUser);
 
         // 3) refresh 전부 제거
         List<MemberEmailProjection> emails = memberRepository.findEmailsByIdIn(ids);
@@ -207,4 +198,26 @@ public class MemberService {
     }
 
 
+    public DupCheckResponse checkEmail(String rawEmail) {
+        if (rawEmail == null) return DupCheckResponse.invalid("email");
+        String email = rawEmail.trim().toLowerCase(Locale.ROOT);
+        if (email.isEmpty() || !EMAIL_RX.matcher(email).matches()) {
+            return DupCheckResponse.invalid("email");
+        }
+        boolean exists = memberRepository.existsByEmailIgnoreCase(email);
+        return exists ? DupCheckResponse.dup("email") : DupCheckResponse.ok();
+    }
+
+    public DupCheckResponse checkNickname(String rawNickname) {
+        if (rawNickname == null) return DupCheckResponse.invalid("nickname");
+        String nick = rawNickname.trim();
+        if (nick.isEmpty() || !NICK_RX.matcher(nick).matches()) {
+            return DupCheckResponse.invalid("nickname");
+        }
+        if (RESERVED_NICKS.contains(nick.toLowerCase(Locale.ROOT))) {
+            return new DupCheckResponse(false, "RESERVED", "This nickname is reserved");
+        }
+        boolean exists = memberRepository.existsByNicknameIgnoreCase(nick);
+        return exists ? DupCheckResponse.dup("nickname") : DupCheckResponse.ok();
+    }
 }

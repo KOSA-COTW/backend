@@ -1,6 +1,6 @@
 package cotw.server.domain.member.dto.request;
 
-public record PatchNicknameRequestDTO(
+public record PatchNicknameRequest(
         String newNickname
 ) {
 }

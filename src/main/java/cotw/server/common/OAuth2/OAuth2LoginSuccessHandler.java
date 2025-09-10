@@ -1,7 +1,6 @@
-package cotw.server.common.auth;
+package cotw.server.common.OAuth2;
 
 import cotw.server.common.jwt.JwtUtil;
-import cotw.server.common.jwt.entity.RefreshToken;
 import cotw.server.common.jwt.service.RefreshTokenService;
 import cotw.server.domain.member.entity.Member;
 import cotw.server.domain.member.entity.ProviderType;
@@ -9,7 +8,6 @@ import cotw.server.domain.member.repository.MemberRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;

@@ -7,6 +7,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class DonationRebuildService {
@@ -29,7 +31,7 @@ public class DonationRebuildService {
         redis.opsForValue().set("donation:total", String.valueOf(total));
 
         // 게시글별 합
-        var rows = em.createQuery("""
+        List<Object[]> rows = em.createQuery("""
             select p.postId, coalesce(sum(p.amount),0)
             from PaymentLedger p
             where p.status = :s
