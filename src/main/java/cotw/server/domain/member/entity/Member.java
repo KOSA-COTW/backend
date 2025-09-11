@@ -116,13 +116,14 @@ public class Member extends BaseEntity {
     }
 
     public static Member ofSocial(ProviderType provider, String providerId,
-                                  String name, String email) {
+                                  String name, String email, String pictureUrl) {
         Member m = new Member();
         m.provider = provider;                 // GOOGLE/KAKAO/...
         m.providerId = providerId;
         m.name = name;
         m.nickname = name;
         m.email = email != null ? email.toLowerCase() : null;
+        m.pictureUrl = pictureUrl;
         // createdAt은 JPA Auditing이 자동으로 설정
         return m;
     }

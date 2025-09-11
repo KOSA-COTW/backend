@@ -35,9 +35,11 @@ public class JwtFilter extends OncePerRequestFilter {
     private static final RequestMatcher SKIP_AUTH = new OrRequestMatcher(
             new AntPathRequestMatcher("/api/auth/login", "POST"),
             new AntPathRequestMatcher("/api/auth/signup", "POST"),
+            new AntPathRequestMatcher("/api/recover/social", "POST"),
             new AntPathRequestMatcher("/api/reissue", "POST"),
             new AntPathRequestMatcher("/oauth2/authorization/**"),   // 소셜 로그인 시작 URL
             new AntPathRequestMatcher("/login/oauth2/code/**"),       // 콜백 URL
+            new AntPathRequestMatcher("/oauth2/**"),
             new AntPathRequestMatcher("/api/public/donation-total"),
             request -> "OPTIONS".equalsIgnoreCase(request.getMethod())
     );
@@ -46,7 +48,6 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-
 
         // 화이트리스트는 토큰이 있어도 무조건 통과
         if (SKIP_AUTH.matches(request)) {
