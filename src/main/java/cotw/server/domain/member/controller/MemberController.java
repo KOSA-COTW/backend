@@ -4,6 +4,7 @@ import cotw.server.common.jwt.CustomUserDetails;
 import cotw.server.domain.member.dto.request.DeactivateRequest;
 import cotw.server.domain.member.dto.request.PatchNicknameRequest;
 import cotw.server.domain.member.dto.request.PatchPasswordRequest;
+import cotw.server.domain.member.dto.request.SocialRecoverRequest;
 import cotw.server.domain.member.dto.response.DupCheckResponse;
 import cotw.server.domain.member.dto.response.ShowInfoResponse;
 import cotw.server.domain.member.service.MemberService;
@@ -25,6 +26,20 @@ public class MemberController {
     private final MemberService memberService;
 
 
+    // 내 정보 불러오기
+    @GetMapping("/info")
+    public ResponseEntity<ShowInfoResponse> getInfo(@AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        ShowInfoResponse response = memberService.showMemberInfo(customUserDetails);
+        ResponseEntity<ShowInfoResponse> responseEntity = new ResponseEntity<>(response, HttpStatus.OK);
+        return responseEntity;
+    }
+
+    @GetMapping("/members/dup-check/verify-email")
+    public ResponseEntity<DupCheckResponse> checkVerifyEmail(@RequestParam("email") String email) {
+        DupCheckResponse res = memberService.checkVerifyingEmail(email);
+        return ResponseEntity.ok(res);
+    }
+
     @GetMapping("/members/dup-check/email")
     public ResponseEntity<DupCheckResponse> checkEmail(@RequestParam("email") String email) {
         DupCheckResponse res = memberService.checkEmail(email);
@@ -37,26 +52,33 @@ public class MemberController {
         return ResponseEntity.ok(res);
     }
 
-    // 내 정보 불러오기
-    @GetMapping("/info")
-    public ResponseEntity<ShowInfoResponse> getInfo(@AuthenticationPrincipal CustomUserDetails customUserDetails) {
-        ShowInfoResponse response = memberService.showMemberInfo(customUserDetails);
-        ResponseEntity<ShowInfoResponse> responseEntity = new ResponseEntity<>(response, HttpStatus.OK);
-        return responseEntity;
-    }
-
-    // 본인 탈퇴
-    @PostMapping("/deactivate")
+    // 로컬 탈퇴
+    @PostMapping("/deactivate/local")
     public ResponseEntity<Void> deactivate(@AuthenticationPrincipal CustomUserDetails me,
                                            @RequestBody DeactivateRequest requestDTO) {
         memberService.deactivate(me.getMemberId(), Duration.ofDays(30), requestDTO.password()); // 보관기간 정책
         return ResponseEntity.ok().build();
     }
 
-    // 보관기간 내 복구 - 이메일로 1회성 토큰 발송해서 복구하는 형태로 진행할 예정.
-    @PostMapping("/recover")
-    public ResponseEntity<Void> recover(@RequestBody String email) {
-        memberService.recover(email);
+    // 소셜 탈퇴
+    @PostMapping("/deactivate/social")
+    public ResponseEntity<Void> deactivate(@AuthenticationPrincipal CustomUserDetails me) {
+        memberService.deactivate(me.getMemberId(), Duration.ofDays(30)); // 보관기간 정책
+        return ResponseEntity.ok().build();
+    }
+
+    // 로컬 계정 복구
+    @PostMapping("/account/recover")
+    public ResponseEntity<?> recover(@RequestBody Map<String,String> body) {
+        String email = body.get("email");
+        memberService.recover(email); // 소프트 삭제 → 활성 전환 + 상태 체크
+        return ResponseEntity.ok(Map.of("status","OK"));
+    }
+
+    // 소셜계정 복구
+    @PostMapping("/recover/social")
+    public ResponseEntity<Void> socialRecover(@RequestBody SocialRecoverRequest request) {
+        memberService.recoverSocial(request.email(), request.provider());
         return ResponseEntity.ok().build();
     }
 
@@ -81,12 +103,6 @@ public class MemberController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/account/recover")
-    public ResponseEntity<?> recover(@RequestBody Map<String,String> body) {
-        String email = body.get("email");
-        memberService.recover(email); // 소프트 삭제 → 활성 전환 + 상태 체크
-        return ResponseEntity.ok(Map.of("status","OK"));
-    }
 
 
 }

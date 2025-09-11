@@ -20,11 +20,14 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Configuration
@@ -97,13 +100,15 @@ public class SecurityConfig {
 
         // 인가 정책
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/oauth2/**", "/login/oauth2/code/**").permitAll()
+                .requestMatchers("/oauth2/**", "/login/oauth2/code/**", "/oauth2/success").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/", "/api/auth/**", "/reissue").permitAll()
                 .requestMatchers("/api/payments/success", "/api/payments/confirm").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/info", "/api/public/donation-total", "api/members/dup-check/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/info", "/api/public/donation-total", "/api/members/dup-check/**").permitAll()
                 // 소프트 삭제 관련 요청
-                .requestMatchers(HttpMethod.POST, "/api/deactivate", "/api/account/recover").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/deactivate/**").authenticated()
+                .requestMatchers(HttpMethod.POST,  "/api/account/recover", "/api/recover/social").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/account/create").permitAll()
 
                 .requestMatchers(HttpMethod.PATCH, "/api/editpass", "/api/changeimage", "/api/editnickname").permitAll()
 
@@ -133,11 +138,28 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
         );
 
-        // OAuth2 로그인
-        http.oauth2Login(oauth -> oauth
-                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+
+        // OAuth2: 성공/실패 핸들러
+        http.oauth2Login(o -> o
+                .userInfoEndpoint(u -> u.userService(customOAuth2UserService))
                 .successHandler(oauth2LoginSuccessHandler)
+                .failureHandler((request, response, ex) -> {
+                    String code = (ex instanceof OAuth2AuthenticationException)
+                            ? ((OAuth2AuthenticationException) ex).getError().getErrorCode()
+                            : "oauth2_error";
+                    String provider = request.getParameter("provider"); // 선택
+                    String email = (String) request.getAttribute("candidateEmail"); // 선택
+
+                    // 프론트엔드 라우트로 리다이렉트 (분리 배포)
+                    String target = frontendUrl + "/oauth2/success?error=" + URLEncoder.encode(code, StandardCharsets.UTF_8)
+                            + (provider != null ? "&provider=" + URLEncoder.encode(provider, StandardCharsets.UTF_8) : "")
+                            + (email != null ? "&email=" + URLEncoder.encode(email, StandardCharsets.UTF_8) : "");
+                    response.sendRedirect(target);
+                })
         );
+
+
+
 
         // 필터 체인 (순서 중요)
         http

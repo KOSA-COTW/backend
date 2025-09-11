@@ -104,15 +104,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         response.sendRedirect(redirectUrl);
     }
 
-//    private void saveRefreshToken(String email, String refresh, long expiresMs) {
-//        Date expiry = new Date(System.currentTimeMillis() + expiresMs);
-//        RefreshToken entity = new RefreshToken();
-//        entity.setEmail(email);
-//        entity.setRefreshToken(refresh);
-//        entity.setExpiryDate(expiry.toString());
-//        refreshTokenRepository.save(entity);
-//    }
-
     private ProviderType toProviderType(String registrationId) {
         return switch (registrationId.toLowerCase()) {
             case "google" -> ProviderType.GOOGLE;

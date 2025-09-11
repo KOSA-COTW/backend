@@ -13,6 +13,7 @@ import cotw.server.domain.member.dto.request.SignUpRequest;
 import cotw.server.domain.member.dto.response.ShowInfoResponse;
 import cotw.server.domain.member.entity.AccountStatus;
 import cotw.server.domain.member.entity.Member;
+import cotw.server.domain.member.entity.ProviderType;
 import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberEmailProjection;
 import cotw.server.domain.member.repository.MemberRepository;
@@ -88,12 +89,27 @@ public class MemberService {
         return responseDTO;
     }
 
-
+    // 로컬 사용자용 탈퇴
     @Transactional
     public void deactivate(Long memberId, Duration retention, String password) {
         Member m = memberRepository.getReferenceById(memberId);
         boolean valid = validatePassword(memberId, password);
         if(valid){
+            m.setStatus(AccountStatus.DELETED);
+            m.setDeletedAt(LocalDateTime.now());
+            m.setRetentionUntil(LocalDateTime.now().plus(retention));
+            m.setTokenVersion(m.getTokenVersion() + 1); // 기존 토큰 무효화
+            refreshTokenService.revokeAllByUser(m.getEmail()); // Refresh 즉시 폐기
+        }else {
+            throw new AccessDeniedException("Invalid member");
+        }
+    }
+
+    // 소셜 사용자용 탈퇴
+    @Transactional
+    public void deactivate(Long memberId, Duration retention) {
+        Member m = memberRepository.findById(memberId).orElse( null);
+        if(m != null){
             m.setStatus(AccountStatus.DELETED);
             m.setDeletedAt(LocalDateTime.now());
             m.setRetentionUntil(LocalDateTime.now().plus(retention));
@@ -110,6 +126,22 @@ public class MemberService {
         if(m == null) m = memberRepository.findByVerifiedEmail(email).orElseThrow(
                 () -> new IllegalArgumentException("user not found")
         );
+        if (m.getStatus() != AccountStatus.DELETED) throw new IllegalStateException("not deleted");
+        if (m.getRetentionUntil() != null && m.getRetentionUntil().isBefore(LocalDateTime.now()))
+            throw new IllegalStateException("retention expired");
+
+        m.setStatus(AccountStatus.ACTIVE);
+        m.setDeletedAt(null);
+        m.setRetentionUntil(null);
+        m.setTokenVersion(m.getTokenVersion() + 1); // 새 버전으로 재발급 유도
+
+        // 방어적으로 기존 refresh 전부 제거 (깨끗한 상태로 시작)
+        refreshTokenService.revokeAllByUser(m.getEmail());
+    }
+
+    @Transactional
+    public void recoverSocial(String email, ProviderType provider) {
+        Member m = memberRepository.findByEmailAndProvider(email, provider).orElse(null);
         if (m.getStatus() != AccountStatus.DELETED) throw new IllegalStateException("not deleted");
         if (m.getRetentionUntil() != null && m.getRetentionUntil().isBefore(LocalDateTime.now()))
             throw new IllegalStateException("retention expired");
@@ -197,7 +229,6 @@ public class MemberService {
         memberRepository.save(member);
     }
 
-
     public DupCheckResponse checkEmail(String rawEmail) {
         if (rawEmail == null) return DupCheckResponse.invalid("email");
         String email = rawEmail.trim().toLowerCase(Locale.ROOT);
@@ -205,6 +236,16 @@ public class MemberService {
             return DupCheckResponse.invalid("email");
         }
         boolean exists = memberRepository.existsByEmailIgnoreCase(email);
+        return exists ? DupCheckResponse.dup("email") : DupCheckResponse.ok();
+    }
+
+    public DupCheckResponse checkVerifyingEmail(String rawEmail) {
+        if (rawEmail == null) return DupCheckResponse.invalid("email");
+        String email = rawEmail.trim().toLowerCase(Locale.ROOT);
+        if (email.isEmpty() || !EMAIL_RX.matcher(email).matches()) {
+            return DupCheckResponse.invalid("email");
+        }
+        boolean exists = memberRepository.existsByVerifiedEmailIgnoreCase(email);
         return exists ? DupCheckResponse.dup("email") : DupCheckResponse.ok();
     }
 

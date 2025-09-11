@@ -83,4 +83,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     //  전체 회원 수 (탈퇴 회원 제외)
     @Query("select count(m) from Member m where m.status <> cotw.server.domain.member.entity.AccountStatus.DELETED")
     long countActiveMembers();
+
+    Optional<Member> findByEmailAndProvider(String email, ProviderType provider);
+
 }

@@ -169,7 +169,7 @@ public class EmailAuthServiceImpl implements EmailAuthService {
         switch (purpose) {
             case SIGNUP -> {
                 // 회원가입: 이미 존재하면 보내지 않음(프론트도 dup-check 하지만 서버에서 2차 방어)
-                if (memberRepository.existsByEmailIgnoreCase(email)) {
+                if (memberRepository.existsByVerifiedEmailIgnoreCase(email)) {
                     return EmailCodeSendResponse.fail("DUPLICATE_EMAIL", "이미 가입된 이메일입니다.", (int) COOLDOWN.getSeconds());
                 }
             }
@@ -245,7 +245,7 @@ public class EmailAuthServiceImpl implements EmailAuthService {
         switch (purpose) {
             case SIGNUP -> {
                 // 가입용: 이미 존재 이메일이면 굳이 검증 진행하지 않음(정책에 따라 다르게)
-                if (memberRepository.existsByEmailIgnoreCase(email)) {
+                if (memberRepository.existsByVerifiedEmailIgnoreCase(email)) {
                     return EmailCodeVerifyResponse.fail("DUPLICATE_EMAIL", "이미 가입된 이메일입니다.");
                 }
             }

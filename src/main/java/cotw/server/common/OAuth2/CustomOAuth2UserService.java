@@ -73,21 +73,24 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
                                 .orElseGet(() ->
                                         // 3) email로도 없으면 신규 소셜 회원 생성
                                         memberRepository.save(
-                                                Member.ofSocial(provider, providerId, info.name(), email)
+                                                Member.ofSocial(provider, providerId, info.name(), email, profileUrl)
                                         )
                                 );
                     }
                     // 4) email이 아예 내려오지 않는 경우(동의 거부 등) → 새 소셜 회원 생성
                     return memberRepository.save(
-                            Member.ofSocial(provider, providerId, info.name(), null)
+                            Member.ofSocial(provider, providerId, info.name(), null, profileUrl)
                     );
                 });
 
         // 상태 검사 (소프트 삭제/정지 차단)
-        if (member.getStatus() != AccountStatus.ACTIVE) {
-            throw new OAuth2AuthenticationException(new OAuth2Error("account_inactive"),
-                    "Account inactive or deleted");
+        if (member.getStatus() == AccountStatus.DELETED) {
+            throw new OAuth2AuthenticationException(new OAuth2Error("account_deleted"), "Deleted account");
         }
+        if (member.getStatus() == AccountStatus.SUSPENDED) {
+            throw new OAuth2AuthenticationException(new OAuth2Error("account_suspended"), "Suspended account");
+        }
+
 
         // 필요 시 프로필 동기화
         member.update(getName(oAuth2User), normalizedEmail, profileUrl);
@@ -100,7 +103,6 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
                 info.toAttributeMap(),           // 뷰에서 쓰고 싶으면 표준화된 맵
                 "id"                              // nameAttributeKey
         );
-
     }
 
     private ProviderType toProviderType(String registrationId) {
