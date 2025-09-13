@@ -1,7 +1,6 @@
 package cotw.server.common.jwt.controller;
 
 import cotw.server.common.jwt.JwtUtil;
-import cotw.server.common.jwt.entity.RefreshToken;
 import cotw.server.common.jwt.service.RefreshTokenService;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.http.Cookie;
@@ -15,7 +14,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.time.Duration;
-import java.util.Date;
 
 @Controller
 @ResponseBody
@@ -80,10 +78,6 @@ public class ReissueController {
         String newRefresh = jwtUtil.createToken("refresh", username, role, memberId, tokenVersion, 1000*60*60*24L);
 
 
-        // Refresh token 저장. DB에 기존 Refresh token 삭제 후 새 Refresh token 저장
-//        refreshTokenRepository.deleteByRefreshToken(refresh);
-//        addRefreshEntity(username, newRefresh, 1000*60*60*24L);
-
         // 회전: 기존 Refresh 제거 + 신규 저장
         refreshTokenService.revoke(refresh);
         refreshTokenService.save(username, newRefresh, Duration.ofDays(1));
@@ -96,17 +90,6 @@ public class ReissueController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-//    private void addRefreshEntity(String username, String newRefresh, Long expiry) {
-//
-//        Date date = new Date(System.currentTimeMillis() + expiry);
-//
-//        RefreshToken refreshToken = new RefreshToken();
-//        refreshToken.setEmail(username);
-//        refreshToken.setRefreshToken(newRefresh);
-//        refreshToken.setExpiryDate(date.toString());
-//
-//        refreshTokenRepository.save(refreshToken);
-//    }
 
     private Cookie createCookie(String key, String value) {
         Cookie cookie = new Cookie(key, value);

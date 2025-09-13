@@ -83,7 +83,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         // Refresh 토큰은 HttpOnly 쿠키로
         ResponseCookie refreshCookie = ResponseCookie.from("refresh", refresh)
                 .httpOnly(true)
-                .secure(false)               // 로컬 http 테스트면 false, https 환경에서 true
+                .secure(true)               // 로컬 http 테스트면 false, https 환경에서 true
                 .sameSite("None")           // 프론트/백이 다른 오리진이면 필수
                 .path("/")
                 .maxAge(Duration.ofDays(1))
