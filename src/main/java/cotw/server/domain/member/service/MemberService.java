@@ -187,11 +187,8 @@ public class MemberService {
         if(member == null) throw new AccessDeniedException("member not found");
 
         String imageUrl = null;
-        try {
-            imageUrl = postService.upload(file);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+
+        imageUrl = postService.upload(file);
         member.setPictureUrl(imageUrl);
         memberRepository.save(member);
     }

@@ -85,11 +85,6 @@ public class Post extends BaseEntity {
         if (dto.getContent() != null) this.content = dto.getContent();
         if (dto.getCategory() != null) this.category = dto.getCategory();
         if (dto.getAmount() > 0) this.amount = dto.getAmount();
-        // 승인 상태(PENDING/APPROVED)였다면 수정 후 자동으로 PRIVATE로 변경
-        if (this.visibilityStatus == PostVisibility.APPROVED ||
-                this.visibilityStatus == PostVisibility.PENDING) {
-            this.visibilityStatus = PostVisibility.PRIVATE;
-        }
         if (dto.getDeadline() != null && dto.getDeadline().isAfter(LocalDate.now())) {
             this.deadline = dto.getDeadline();
         }

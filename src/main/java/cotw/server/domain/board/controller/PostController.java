@@ -129,13 +129,27 @@ public class PostController {
      */
     @PostMapping("/upload")
     public Map<String, String> uploadImage(@RequestPart("file") MultipartFile file) {
-        try {
-            String imageUrl = postService.upload(file);
-            return Map.of("url", imageUrl);
-        } catch (IOException e) {
-            throw new BoardException("이미지 업로드 중 오류가 발생했습니다.");
-        }
+        String imageUrl = postService.upload(file);
+        return Map.of("url", imageUrl);
     }
+
+    /**
+     * 여러 이미지 업로드
+     */
+    @PostMapping("/upload-multiple")
+    public List<String> uploadImages(@RequestPart("files") List<MultipartFile> files) {
+        return postService.uploadFiles(files);
+    }
+
+    @GetMapping("/presigned-url")
+    public Map<String, String> getPresignedUrl(
+            @RequestParam String fileName,
+            @RequestParam String contentType
+    ) {
+        String url = postService.generatePresignedUrl(fileName, contentType);
+        return Map.of("url", url);
+    }
+
 
     // 승인 요청
     @PostMapping("/{postId}/request-approval")
@@ -163,14 +177,13 @@ public class PostController {
             @RequestParam(defaultValue = "12") int size,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String title,
-            @RequestParam(required = false) String authorName,
             @RequestParam(defaultValue = "date") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection,
             @RequestParam(defaultValue = "") String fundStatus
     ) {
         return ResponseEntity.ok(
                 postService.getApprovedPostsPaged(
-                        category, title, authorName,
+                        category, title,
                         sortBy, sortDirection,
                         fundStatus,
                         page, size

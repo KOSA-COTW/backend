@@ -109,7 +109,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     WHERE p.visibility_status = 'APPROVED'
       AND (COALESCE(:category, '') = '' OR p.category = :category)
       AND (COALESCE(:title, '') = '' OR LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%')))
-      AND (COALESCE(:authorName, '') = '' OR LOWER(a.name) LIKE LOWER(CONCAT('%', :authorName, '%')))
       AND (
         :fundStatus = '' 
         OR (:fundStatus = 'ONGOING'  AND p.deadline >= CURRENT_DATE)
@@ -128,7 +127,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     WHERE p.visibility_status = 'APPROVED'
       AND (COALESCE(:category, '') = '' OR p.category = :category)
       AND (COALESCE(:title, '') = '' OR LOWER(p.title) LIKE LOWER(CONCAT('%', :title, '%')))
-      AND (COALESCE(:authorName, '') = '' OR LOWER(a.name) LIKE LOWER(CONCAT('%', :authorName, '%')))
       AND (
         :fundStatus = '' 
         OR (:fundStatus = 'ONGOING'  AND p.deadline >= CURRENT_DATE)
@@ -139,7 +137,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Page<Post> findAllApprovedWithFilters(
             @Param("category") String category,
             @Param("title") String title,
-            @Param("authorName") String authorName,
             @Param("sortBy") String sortBy,
             @Param("sortDirection") String sortDirection,
             @Param("fundStatus") String fundStatus,

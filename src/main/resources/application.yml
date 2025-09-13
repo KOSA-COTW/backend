@@ -72,7 +72,7 @@ logging:
       hibernate:
         sql: debug
         type: trace
-        
+
 jwt:
   header: Authorization
   secret: "Y2VudGVyb2Z0aGV3b3JsZGFuZHRvZ2V0aGVyd2l0aHVzYTQ1MmFhYmI3YjliYmJiYjljODVjYzllZXcyMzUyb3BxcnN0dQ=="

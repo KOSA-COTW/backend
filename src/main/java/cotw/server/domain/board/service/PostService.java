@@ -1,6 +1,8 @@
 package cotw.server.domain.board.service;
 
+import com.amazonaws.HttpMethod;
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import cotw.server.domain.board.dto.request.MyPostPageRequestDTO;
 import cotw.server.domain.board.dto.request.PostCreateRequestDto;
@@ -19,18 +21,23 @@ import cotw.server.domain.member.entity.Role;
 import cotw.server.domain.member.repository.MemberRepository;
 import cotw.server.domain.payment.repository.PaymentOrderRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URL;
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PostService {
@@ -165,6 +172,12 @@ public class PostService {
             throw new BoardException("수정 권한이 없습니다.");
         }
 
+        // 승인된 글은 일반 유저 수정 불가
+        if (post.getVisibilityStatus() == PostVisibility.APPROVED
+                && requester.getRole() == Role.USER) {
+            throw new BoardException("승인된 글은 수정할 수 없습니다.");
+        }
+
         if (dto.getDeadline().isBefore(LocalDate.now())) {
             throw new BoardException("기부 마감일은 오늘 이후여야 합니다.");
         }
@@ -208,6 +221,11 @@ public class PostService {
             throw new BoardException("삭제 권한이 없습니다.");
         }
 
+        if (post.getVisibilityStatus() == PostVisibility.APPROVED
+                && requester.getRole() == Role.USER) {
+            throw new BoardException("승인된 글은 삭제할 수 없습니다.");
+        }
+
         // 결제 내역이 있는지 확인
         if (paymentOrderRepository.existsByPostId(postId)) {
             throw new PostHasPaymentHistoryException("결제내역이 있는 게시물은 삭제할 수 없습니다.");
@@ -226,13 +244,71 @@ public class PostService {
     }
 
     // 파일 업로드
-    public String upload(MultipartFile image) throws IOException {
-        String fileName = UUID.randomUUID() + "_" + image.getOriginalFilename();
-        ObjectMetadata metadata = new ObjectMetadata();
-        metadata.setContentType(image.getContentType());
-        metadata.setContentLength(image.getSize());
-        s3Client.putObject(bucket, fileName, image.getInputStream(), metadata);
-        return s3Client.getUrl(bucket, fileName).toString();
+    public String upload(MultipartFile image) {
+        try {
+            // 1. 파일 크기 제한 (10MB)
+            if (image.getSize() > 10 * 1024 * 1024) {
+                throw new BoardException("최대 10MB 이하의 이미지만 업로드 가능합니다.");
+            }
+
+            // 2. 확장자 추출 및 검증
+            String extension = StringUtils.getFilenameExtension(image.getOriginalFilename());
+            List<String> allowedExtensions = List.of("jpg", "jpeg", "png", "gif", "webp");
+            if (extension == null || !allowedExtensions.contains(extension.toLowerCase())) {
+                throw new BoardException("허용되지 않는 파일 형식입니다.");
+            }
+
+            // 3. ContentType 검증
+            if (image.getContentType() == null || !image.getContentType().startsWith("image/")) {
+                throw new BoardException("이미지 파일만 업로드 가능합니다.");
+            }
+
+            // 4. 파일명 생성 (폴더 구조 + UUID + 확장자)
+            String folder = LocalDate.now().toString(); // ex) "2025-09-10"
+            String fileName = folder + "/" + UUID.randomUUID().toString() + "." + extension;
+
+            // 5. 메타데이터 세팅
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentType(image.getContentType());
+            metadata.setContentLength(image.getSize());
+
+            // 6. S3 업로드
+            s3Client.putObject(bucket, fileName, image.getInputStream(), metadata);
+
+            // 7. 업로드된 파일 URL 반환
+            return s3Client.getUrl(bucket, fileName).toString();
+
+        } catch (IOException e) {
+            throw new BoardException("이미지 업로드 실패");
+        }
+    }
+
+    // 여러 파일 업로드
+    public List<String> uploadFiles(List<MultipartFile> images) {
+        return images.parallelStream()
+                .map(file -> {
+                    try {
+                        return upload(file);
+                    } catch (Exception e) {
+                        log.error("❌ Failed to upload file: {}", file.getOriginalFilename(), e);
+                        throw new BoardException("이미지 업로드 실패: " + file.getOriginalFilename());
+                    }
+                })
+                .toList();
+    }
+
+    public String generatePresignedUrl(String fileName, String contentType) {
+        String objectKey = "posts/" + UUID.randomUUID() + "_" + fileName;
+        Date expiration = new Date(System.currentTimeMillis() + 1000 * 60 * 5); // 5분
+
+        GeneratePresignedUrlRequest request = new GeneratePresignedUrlRequest(bucket, objectKey)
+                .withMethod(HttpMethod.PUT)
+                .withExpiration(expiration);
+
+        request.addRequestParameter("Content-Type", contentType);
+
+        URL presignedUrl = s3Client.generatePresignedUrl(request);
+        return presignedUrl.toString();
     }
 
     /**
@@ -278,7 +354,6 @@ public class PostService {
     public Page<PostListResponseDto> getApprovedPostsPaged(
             String category,
             String title,
-            String authorName,
             String sortBy,
             String sortDirection,
             String fundStatus,
@@ -286,7 +361,7 @@ public class PostService {
             int size
     ) {
         Page<Post> posts = postRepository.findAllApprovedWithFilters(
-                category, title, authorName,
+                category, title,
                 sortBy, sortDirection,
                 fundStatus,
                 PageRequest.of(page, size)
