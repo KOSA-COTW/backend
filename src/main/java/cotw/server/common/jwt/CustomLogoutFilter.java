@@ -78,18 +78,6 @@ public class CustomLogoutFilter extends GenericFilterBean {
             return;
         }
 
-        //DB에 저장되어 있는지 확인
-//        Boolean isExist = refreshTokenRepository.existsByRefreshToken(refresh);
-//        if (!isExist) {
-//
-//            //response status code
-//            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-//            return;
-//        }
-
-        //로그아웃 진행
-        //Refresh 토큰 DB에서 제거
-//        refreshTokenRepository.deleteByRefreshToken(refresh);
 
         // 로그아웃: 즉시 차단(캐시) + DB 제거
         refreshTokenService.revoke(refresh);
