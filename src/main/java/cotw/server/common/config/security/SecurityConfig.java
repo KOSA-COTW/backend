@@ -17,6 +17,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -85,6 +86,16 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
+                // 프록시 헤더 신뢰 설정
+                .requiresChannel(channel ->
+                        channel.requestMatchers(r -> r.getHeader("X-Forwarded-Proto") != null)
+                                .requiresSecure())
+                .headers(headers -> headers
+                                .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)  // 최신 방식
+                        // 또는 .frameOptions().deny() 대신:
+                        // .addHeaderWriter(new XFrameOptionsHeaderWriter(XFrameOptionsMode.DENY))
+                )
+
                 // CORS
                 .cors(cors -> cors.configurationSource(request -> {
                         CorsConfiguration config = new CorsConfiguration();
@@ -188,6 +199,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint((req, res, ex) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
                         .accessDeniedHandler((req, res, ex) -> res.sendError(HttpServletResponse.SC_FORBIDDEN))
                 );
+
 
         return http.build();
     }
